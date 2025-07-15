@@ -1,5 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
-import React, { useState, useEffect, createContext, useContext } from "react"; // useContext é necessário aqui agora
+import React, { useState, useEffect, createContext, useContext } from "react";
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
@@ -10,7 +9,6 @@ import {
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// 1. Monta o objeto de configuração do Firebase
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -20,15 +18,19 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// 2. Cria o Contexto
 const AuthContext = createContext(null);
 
-// 3. Cria o Provedor do Contexto (Componente Principal)
-export const AuthProvider = ({ children }) => {
+// Hook customizado continua como uma exportação nomeada
+// eslint-disable-next-line react-refresh/only-export-components
+export const useAuth = () => {
+  return useContext(AuthContext);
+};
+
+// O componente Provedor agora é a exportação PADRÃO
+export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
-  // Inicializa o Firebase e os serviços uma única vez
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
@@ -52,20 +54,15 @@ export const AuthProvider = ({ children }) => {
     loadingAuth,
     db,
     auth,
+    appId: firebaseConfig.appId,
     registerUser,
     loginUser,
     logoutUser,
   };
 
-  // Renderiza os filhos apenas quando a verificação inicial de auth terminar
   return (
     <AuthContext.Provider value={value}>
       {!loadingAuth && children}
     </AuthContext.Provider>
   );
-};
-
-// 4. Cria um Hook customizado para consumir o contexto (melhor prática)
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+}
