@@ -1,16 +1,23 @@
-import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { Wallet, CalendarDays, MinusCircle, Plus, Settings, LogOut } from 'lucide-react';
+import React from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import {
+  Wallet,
+  CalendarDays,
+  MinusCircle,
+  Plus,
+  Settings,
+  LogOut,
+} from 'lucide-react'
 
 export function Sidebar({ currentPage, setCurrentPage }) {
-  const { logoutUser } = useAuth();
+  const { logoutUser } = useAuth()
 
   const navItems = [
     { page: 'calendar', label: 'Calendário', icon: CalendarDays },
     { page: 'addExpense', label: 'Despesa', icon: MinusCircle },
     { page: 'addRevenue', label: 'Receita', icon: Plus },
     { page: 'settings', label: 'Ajustes', icon: Settings },
-  ];
+  ]
 
   return (
     <nav className="sidebar">
@@ -19,7 +26,7 @@ export function Sidebar({ currentPage, setCurrentPage }) {
       </div>
       <ul className="sidebar-nav">
         {navItems.map((item) => {
-          const Icon = item.icon;
+          const Icon = item.icon
           return (
             <li key={item.page}>
               <button
@@ -31,7 +38,7 @@ export function Sidebar({ currentPage, setCurrentPage }) {
                 <span className="sidebar-label">{item.label}</span>
               </button>
             </li>
-          );
+          )
         })}
       </ul>
       <div className="sidebar-footer">
@@ -41,5 +48,5 @@ export function Sidebar({ currentPage, setCurrentPage }) {
         </button>
       </div>
     </nav>
-  );
+  )
 }

@@ -1,92 +1,92 @@
-import React, { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useState, useMemo } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   getDaysInMonth,
   getFirstDayOfMonth,
   formatFiscalMonth,
-} from "../utils/helpers";
+} from '../utils/helpers'
 
 export function CalendarView({
   transactions,
   setCurrentPage,
   setSelectedDate,
 }) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date())
 
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear()
+  const currentMonth = currentDate.getMonth()
 
   const handlePrevMonth = () => {
-    setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
-  };
+    setCurrentDate(new Date(currentYear, currentMonth - 1, 1))
+  }
 
   const handleNextMonth = () => {
-    setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
-  };
+    setCurrentDate(new Date(currentYear, currentMonth + 1, 1))
+  }
 
   const handleDayClick = (day) => {
-    const clickedDate = new Date(currentYear, currentMonth, day);
-    setSelectedDate(clickedDate);
-    setCurrentPage("dayDetails");
-  };
+    const clickedDate = new Date(currentYear, currentMonth, day)
+    setSelectedDate(clickedDate)
+    setCurrentPage('dayDetails')
+  }
 
   const monthData = useMemo(() => {
-    const daysInMonth = getDaysInMonth(currentYear, currentMonth);
-    const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
-    const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
+    const daysInMonth = getDaysInMonth(currentYear, currentMonth)
+    const firstDay = getFirstDayOfMonth(currentYear, currentMonth)
+    const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1
 
     const fiscalMonthStr = formatFiscalMonth(
-      new Date(currentYear, currentMonth, 1)
-    );
+      new Date(currentYear, currentMonth, 1),
+    )
     const relevantTransactions = transactions.filter(
-      (t) => t.fiscalMonth === fiscalMonthStr
-    );
+      (t) => t.fiscalMonth === fiscalMonthStr,
+    )
 
-    let cumulativeBalance = 0;
+    let cumulativeBalance = 0
     const dailyData = Array.from({ length: daysInMonth }, (_, i) => {
-      const day = i + 1;
+      const day = i + 1
 
       const dayTransactions = relevantTransactions.filter((t) => {
-        const tDate = t.date;
+        const tDate = t.date
         return (
           tDate.getDate() === day &&
           tDate.getMonth() === currentMonth &&
           tDate.getFullYear() === currentYear
-        );
-      });
+        )
+      })
 
       const dayRevenues = dayTransactions
-        .filter((t) => t.type === "revenue")
-        .reduce((sum, t) => sum + t.value, 0);
+        .filter((t) => t.type === 'revenue')
+        .reduce((sum, t) => sum + t.value, 0)
 
       const dayExpenses = dayTransactions
-        .filter((t) => t.type === "expense")
-        .reduce((sum, t) => sum + t.value, 0);
+        .filter((t) => t.type === 'expense')
+        .reduce((sum, t) => sum + t.value, 0)
 
-      cumulativeBalance += dayRevenues - dayExpenses;
+      cumulativeBalance += dayRevenues - dayExpenses
 
       return {
         day,
         revenues: dayRevenues,
         expenses: dayExpenses,
         balance: cumulativeBalance,
-      };
-    });
+      }
+    })
 
     return {
       daysInMonth,
       adjustedFirstDay,
       dailyData,
       monthName: new Date(currentYear, currentMonth).toLocaleDateString(
-        "pt-BR",
-        { month: "long" }
+        'pt-BR',
+        { month: 'long' },
       ),
       year: currentYear,
-    };
-  }, [currentYear, currentMonth, transactions]);
+    }
+  }, [currentYear, currentMonth, transactions])
 
-  const blanks = Array.from({ length: monthData.adjustedFirstDay });
-  const weekDays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+  const blanks = Array.from({ length: monthData.adjustedFirstDay })
+  const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 
   return (
     <div className="page-content">
@@ -128,5 +128,5 @@ export function CalendarView({
         ))}
       </div>
     </div>
-  );
+  )
 }

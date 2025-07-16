@@ -15,9 +15,7 @@ module.exports = {
       jsx: true,
     },
   },
-  plugins: [
-    'react',
-  ],
+  plugins: ['react'],
   rules: {
     'react/react-in-jsx-scope': 'off',
   },
@@ -26,4 +24,4 @@ module.exports = {
       version: 'detect',
     },
   },
-};
+}

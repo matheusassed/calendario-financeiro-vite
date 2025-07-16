@@ -1,60 +1,80 @@
-import React, { useState, useMemo } from "react";
-import { useAuth } from "./contexts/AuthContext";
-import { useFirestoreQuery } from "./hooks/useFirestoreQuery";
-import { collection, query } from "firebase/firestore";
+import React, { useState, useMemo } from 'react'
+import { useAuth } from './contexts/AuthContext'
+import { useFirestoreQuery } from './hooks/useFirestoreQuery'
+import { collection, query } from 'firebase/firestore'
 
-import { Sidebar } from "./components/Sidebar";
-import { LoginScreen } from "./components/LoginScreen";
-import { CalendarView } from "./views/CalendarView";
+import { Sidebar } from './components/Sidebar'
+import { LoginScreen } from './components/LoginScreen'
+import { CalendarView } from './views/CalendarView'
+import { ExpenseForm } from './views/ExpenseForm' // Importação real
+import { RevenueForm } from './views/RevenueForm' // Importação real
 
-// Componentes de placeholder para as futuras telas
+// Placeholders
 const DayDetailsView = ({ selectedDate }) => (
   <div className="page-content">
     <h1>Detalhes do Dia</h1>
     <p>
-      Data selecionada:{" "}
-      {selectedDate ? selectedDate.toLocaleDateString() : "Nenhuma"}
+      Data selecionada:{' '}
+      {selectedDate ? selectedDate.toLocaleDateString() : 'Nenhuma'}
     </p>
   </div>
-);
-const ExpenseForm = () => (
-  <div className="page-content">
-    <h1>Formulário de Despesa</h1>
-  </div>
-);
-const RevenueForm = () => (
-  <div className="page-content">
-    <h1>Formulário de Receita</h1>
-  </div>
-);
+)
 const SettingsView = () => (
   <div className="page-content">
     <h1>Configurações</h1>
   </div>
-);
+)
 
 function App() {
-  const { user, loadingAuth, db, appId } = useAuth();
-  const [currentPage, setCurrentPage] = useState("calendar");
-  const [selectedDate, setSelectedDate] = useState(null);
+  const { user, loadingAuth, db, appId } = useAuth()
+  const [currentPage, setCurrentPage] = useState('calendar')
+  const [selectedDate, setSelectedDate] = useState(null)
 
+  // --- Queries para o Firestore ---
   const transactionsQuery = useMemo(() => {
-    if (!user) return null;
+    if (!user) return null
     return query(
-      collection(db, `artifacts/${appId}/users/${user.uid}/transactions`)
-    );
-  }, [db, appId, user]);
+      collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
+    )
+  }, [db, appId, user])
 
+  const categoriesQuery = useMemo(() => {
+    if (!user) return null
+    return query(
+      collection(db, `artifacts/${appId}/users/${user.uid}/categories`),
+    )
+  }, [db, appId, user])
+
+  const creditCardsQuery = useMemo(() => {
+    if (!user) return null
+    return query(
+      collection(db, `artifacts/${appId}/users/${user.uid}/creditCards`),
+    )
+  }, [db, appId, user])
+
+  // --- Busca de dados com o hook ---
   const { data: transactions, loading: loadingTransactions } =
-    useFirestoreQuery(transactionsQuery);
-  const loadingData = loadingTransactions;
+    useFirestoreQuery(transactionsQuery)
+  const { data: categories, loading: loadingCategories } =
+    useFirestoreQuery(categoriesQuery)
+  const { data: creditCards, loading: loadingCreditCards } =
+    useFirestoreQuery(creditCardsQuery)
+
+  const loadingData =
+    loadingTransactions || loadingCategories || loadingCreditCards
+
+  const handleSave = () => {
+    setCurrentPage('calendar')
+  }
 
   const renderPage = () => {
     const props = {
       transactions,
+      categories,
+      creditCards,
       setCurrentPage,
       setSelectedDate,
-    };
+    }
 
     if (loadingData && !loadingAuth) {
       return (
@@ -62,35 +82,47 @@ function App() {
           <div className="spinner"></div>
           <p>Carregando dados...</p>
         </div>
-      );
+      )
     }
 
     switch (currentPage) {
-      case "calendar":
-        return <CalendarView {...props} />;
-      case "addExpense":
-        return <ExpenseForm {...props} />;
-      case "addRevenue":
-        return <RevenueForm {...props} />;
-      case "settings":
-        return <SettingsView {...props} />;
-      case "dayDetails":
-        return <DayDetailsView {...props} selectedDate={selectedDate} />;
+      case 'calendar':
+        return <CalendarView {...props} />
+      case 'addExpense':
+        return (
+          <ExpenseForm
+            {...props}
+            onSave={handleSave}
+            onCancel={() => setCurrentPage('calendar')}
+          />
+        )
+      case 'addRevenue':
+        return (
+          <RevenueForm
+            {...props}
+            onSave={handleSave}
+            onCancel={() => setCurrentPage('calendar')}
+          />
+        )
+      case 'settings':
+        return <SettingsView {...props} />
+      case 'dayDetails':
+        return <DayDetailsView {...props} selectedDate={selectedDate} />
       default:
-        return <CalendarView {...props} />;
+        return <CalendarView {...props} />
     }
-  };
+  }
 
   if (loadingAuth) {
     return (
       <div className="loading-container">
         <div className="spinner"></div>
       </div>
-    );
+    )
   }
 
   if (!user) {
-    return <LoginScreen />;
+    return <LoginScreen />
   }
 
   return (
@@ -98,7 +130,7 @@ function App() {
       <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
       <main className="main-content">{renderPage()}</main>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
