@@ -6,10 +6,11 @@ import { collection, query } from 'firebase/firestore'
 import { Sidebar } from './components/Sidebar'
 import { LoginScreen } from './components/LoginScreen'
 import { CalendarView } from './views/CalendarView'
-import { ExpenseForm } from './views/ExpenseForm' // Importação real
-import { RevenueForm } from './views/RevenueForm' // Importação real
+import { ExpenseForm } from './views/ExpenseForm'
+import { RevenueForm } from './views/RevenueForm'
+import { SettingsView } from './views/SettingsView' // Importação real
 
-// Placeholders
+// Placeholder
 const DayDetailsView = ({ selectedDate }) => (
   <div className="page-content">
     <h1>Detalhes do Dia</h1>
@@ -17,11 +18,6 @@ const DayDetailsView = ({ selectedDate }) => (
       Data selecionada:{' '}
       {selectedDate ? selectedDate.toLocaleDateString() : 'Nenhuma'}
     </p>
-  </div>
-)
-const SettingsView = () => (
-  <div className="page-content">
-    <h1>Configurações</h1>
   </div>
 )
 
