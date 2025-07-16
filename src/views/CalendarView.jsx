@@ -13,6 +13,9 @@ export function CalendarView({
 }) {
   const [currentDate, setCurrentDate] = useState(new Date())
 
+  // Guarda a data de hoje para comparação
+  const today = new Date()
+
   const currentYear = currentDate.getFullYear()
   const currentMonth = currentDate.getMonth()
 
@@ -32,8 +35,10 @@ export function CalendarView({
 
   const monthData = useMemo(() => {
     const daysInMonth = getDaysInMonth(currentYear, currentMonth)
-    const firstDay = getFirstDayOfMonth(currentYear, currentMonth)
-    const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1
+    const firstDay = getFirstDayOfMonth(currentYear, currentMonth) // 0 = Domingo, 1 = Segunda...
+
+    // MELHORIA: A semana agora começa no Domingo, então não precisamos mais de 'adjustedFirstDay'.
+    // O valor de 'firstDay' já é o número correto de células em branco.
 
     const fiscalMonthStr = formatFiscalMonth(
       new Date(currentYear, currentMonth, 1),
@@ -75,7 +80,7 @@ export function CalendarView({
 
     return {
       daysInMonth,
-      adjustedFirstDay,
+      firstDay, // Usaremos o valor original
       dailyData,
       monthName: new Date(currentYear, currentMonth).toLocaleDateString(
         'pt-BR',
@@ -85,8 +90,9 @@ export function CalendarView({
     }
   }, [currentYear, currentMonth, transactions])
 
-  const blanks = Array.from({ length: monthData.adjustedFirstDay })
-  const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+  const blanks = Array.from({ length: monthData.firstDay })
+  // MELHORIA: A ordem dos dias da semana foi alterada.
+  const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
   return (
     <div className="page-content">
@@ -108,24 +114,35 @@ export function CalendarView({
         {blanks.map((_, i) => (
           <div key={`blank-${i}`} className="day-cell blank"></div>
         ))}
-        {monthData.dailyData.map((data) => (
-          <div
-            key={data.day}
-            className="day-cell"
-            onClick={() => handleDayClick(data.day)}
-          >
-            <div className="day-number">{data.day}</div>
-            <div className="day-details">
-              {data.revenues > 0 && (
-                <p className="day-revenue">R: {data.revenues.toFixed(2)}</p>
-              )}
-              {data.expenses > 0 && (
-                <p className="day-expense">D: {data.expenses.toFixed(2)}</p>
-              )}
-              <p className="day-balance">S: {data.balance.toFixed(2)}</p>
+        {monthData.dailyData.map((data) => {
+          // MELHORIA: Verifica se o dia renderizado é o dia atual.
+          const isToday =
+            data.day === today.getDate() &&
+            currentMonth === today.getMonth() &&
+            currentYear === today.getFullYear()
+
+          // Constrói as classes dinamicamente
+          const dayCellClasses = `day-cell ${isToday ? 'today' : ''}`
+
+          return (
+            <div
+              key={data.day}
+              className={dayCellClasses}
+              onClick={() => handleDayClick(data.day)}
+            >
+              <div className="day-number">{data.day}</div>
+              <div className="day-details">
+                {data.revenues > 0 && (
+                  <p className="day-revenue">R: {data.revenues.toFixed(2)}</p>
+                )}
+                {data.expenses > 0 && (
+                  <p className="day-expense">D: {data.expenses.toFixed(2)}</p>
+                )}
+                <p className="day-balance">S: {data.balance.toFixed(2)}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
