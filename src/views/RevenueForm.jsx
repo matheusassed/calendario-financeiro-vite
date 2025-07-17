@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { addDoc, collection } from 'firebase/firestore'
 import { formatFiscalMonth } from '../utils/helpers'
+import toast from 'react-hot-toast'
 
 export function RevenueForm({ onSave, onCancel }) {
   const { db, user, appId } = useAuth()
@@ -11,6 +12,7 @@ export function RevenueForm({ onSave, onCancel }) {
     value: '',
   })
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -24,7 +26,9 @@ export function RevenueForm({ onSave, onCancel }) {
       return
     }
     setError('')
+    setLoading(true)
 
+    const loadingToast = toast.loading('Salvando receita...')
     try {
       const transactionDate = new Date(formData.date + 'T12:00:00')
 
@@ -43,11 +47,14 @@ export function RevenueForm({ onSave, onCancel }) {
         dataToSave,
       )
 
-      alert('Receita adicionada com sucesso!')
+      toast.success('Receita adicionada com sucesso!', { id: loadingToast })
       if (onSave) onSave()
     } catch (err) {
       console.error('Erro ao adicionar receita:', err)
+      toast.error('Ocorreu um erro ao salvar a receita.', { id: loadingToast })
       setError('Ocorreu um erro ao salvar a receita.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -95,14 +102,17 @@ export function RevenueForm({ onSave, onCancel }) {
           </div>
         </div>
 
-        {/* Futuramente, aqui entrará a lógica de recorrência */}
-
         <div className="form-actions">
-          <button type="button" onClick={onCancel} className="btn-secondary">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="btn-secondary"
+            disabled={loading}
+          >
             Cancelar
           </button>
-          <button type="submit" className="btn-primary">
-            Salvar Receita
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? 'Salvando...' : 'Salvar Receita'}
           </button>
         </div>
       </form>

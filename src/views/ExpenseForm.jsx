@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { addDoc, collection } from 'firebase/firestore'
 import { formatFiscalMonth } from '../utils/helpers'
+import toast from 'react-hot-toast'
 
 export function ExpenseForm({ onSave, onCancel, categories }) {
   const { db, user, appId } = useAuth()
@@ -14,6 +15,7 @@ export function ExpenseForm({ onSave, onCancel, categories }) {
     cardId: '',
   })
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -27,9 +29,11 @@ export function ExpenseForm({ onSave, onCancel, categories }) {
       return
     }
     setError('')
+    setLoading(true)
 
+    const loadingToast = toast.loading('Salvando despesa...')
     try {
-      const transactionDate = new Date(formData.date + 'T12:00:00') // Evita problemas de fuso
+      const transactionDate = new Date(formData.date + 'T12:00:00')
 
       const dataToSave = {
         userId: user.uid,
@@ -37,7 +41,7 @@ export function ExpenseForm({ onSave, onCancel, categories }) {
         description: formData.description,
         value: parseFloat(formData.value),
         date: transactionDate,
-        fiscalMonth: formatFiscalMonth(transactionDate), // Lógica simples por enquanto
+        fiscalMonth: formatFiscalMonth(transactionDate),
         paymentMethod: formData.paymentMethod,
         categoryId: formData.categoryId,
         cardId: formData.paymentMethod === 'credit' ? formData.cardId : '',
@@ -50,11 +54,14 @@ export function ExpenseForm({ onSave, onCancel, categories }) {
         dataToSave,
       )
 
-      alert('Despesa adicionada com sucesso!')
+      toast.success('Despesa adicionada com sucesso!', { id: loadingToast })
       if (onSave) onSave()
     } catch (err) {
       console.error('Erro ao adicionar despesa:', err)
+      toast.error('Ocorreu um erro ao salvar a despesa.', { id: loadingToast })
       setError('Ocorreu um erro ao salvar a despesa.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -136,14 +143,17 @@ export function ExpenseForm({ onSave, onCancel, categories }) {
           </select>
         </div>
 
-        {/* Futuramente, aqui entrará a lógica de parcelamento e cartão */}
-
         <div className="form-actions">
-          <button type="button" onClick={onCancel} className="btn-secondary">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="btn-secondary"
+            disabled={loading}
+          >
             Cancelar
           </button>
-          <button type="submit" className="btn-primary">
-            Salvar Despesa
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? 'Salvando...' : 'Salvar Despesa'}
           </button>
         </div>
       </form>
