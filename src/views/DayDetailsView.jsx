@@ -1,21 +1,22 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import {
   MinusCircle,
-  Plus,
   FileText,
   Trash2,
   CheckCircle,
   ArrowLeft,
 } from 'lucide-react'
+import { formatFiscalMonth } from '../utils/helpers'
 
-// Função auxiliar para formatar a data, pode ser movida para helpers.jsx depois
+// Função auxiliar para formatar a data
 const formatDate = (date) => {
   if (!date) return ''
-  return new Date(date).toLocaleDateString('pt-PT', {
+  return new Date(date).toLocaleDateString('pt-BR', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: 'UTC',
   })
 }
 
@@ -25,6 +26,57 @@ export function DayDetailsView({
   categories,
   setCurrentPage,
 }) {
+  // **CORREÇÃO**: O hook useMemo foi movido para o topo do componente.
+  const dayData = useMemo(() => {
+    // Ele agora lida com o caso de a 'selectedDate' ser nula.
+    if (!selectedDate) {
+      return {
+        dayTransactions: [],
+        dailyRevenues: 0,
+        dailyExpenses: 0,
+        cumulativeBalance: 0,
+      }
+    }
+
+    const dayTransactions = transactions.filter((t) => {
+      const tDate = t.date
+      return (
+        tDate.getDate() === selectedDate.getDate() &&
+        tDate.getMonth() === selectedDate.getMonth() &&
+        tDate.getFullYear() === selectedDate.getFullYear()
+      )
+    })
+
+    const dailyRevenues = dayTransactions
+      .filter((t) => t.type === 'revenue')
+      .reduce((sum, t) => sum + t.value, 0)
+
+    const dailyExpenses = dayTransactions
+      .filter((t) => t.type === 'expense')
+      .reduce((sum, t) => sum + t.value, 0)
+
+    const targetDateEnd = new Date(selectedDate)
+    targetDateEnd.setHours(23, 59, 59, 999)
+
+    const fiscalMonthStr = formatFiscalMonth(selectedDate)
+    const cumulativeBalance = transactions
+      .filter((t) => {
+        const tDate = t.date
+        return (
+          t.fiscalMonth === fiscalMonthStr &&
+          tDate.getTime() <= targetDateEnd.getTime()
+        )
+      })
+      .reduce((acc, t) => {
+        if (t.type === 'revenue') return acc + t.value
+        if (t.type === 'expense') return acc - t.value
+        return acc
+      }, 0)
+
+    return { dayTransactions, dailyRevenues, dailyExpenses, cumulativeBalance }
+  }, [selectedDate, transactions])
+
+  // A verificação condicional agora acontece DEPOIS de todos os hooks.
   if (!selectedDate) {
     return (
       <div className="page-content">
@@ -39,24 +91,6 @@ export function DayDetailsView({
       </div>
     )
   }
-
-  // Filtra as transações apenas para o dia selecionado
-  const dayTransactions = transactions.filter((t) => {
-    const tDate = t.date
-    return (
-      tDate.getDate() === selectedDate.getDate() &&
-      tDate.getMonth() === selectedDate.getMonth() &&
-      tDate.getFullYear() === selectedDate.getFullYear()
-    )
-  })
-
-  const dailyRevenues = dayTransactions
-    .filter((t) => t.type === 'revenue')
-    .reduce((sum, t) => sum + t.value, 0)
-
-  const dailyExpenses = dayTransactions
-    .filter((t) => t.type === 'expense')
-    .reduce((sum, t) => sum + t.value, 0)
 
   const getCategoryName = (id) =>
     categories.find((c) => c.id === id)?.name || 'Sem Categoria'
@@ -77,29 +111,35 @@ export function DayDetailsView({
         <div>
           <span>Receitas do Dia</span>
           <strong className="summary-revenue">
-            + R$ {dailyRevenues.toFixed(2)}
+            + R$ {dayData.dailyRevenues.toFixed(2)}
           </strong>
         </div>
         <div>
           <span>Despesas do Dia</span>
           <strong className="summary-expense">
-            - R$ {dailyExpenses.toFixed(2)}
+            - R$ {dayData.dailyExpenses.toFixed(2)}
           </strong>
         </div>
         <div>
           <span>Saldo do Dia</span>
-          <strong>R$ {(dailyRevenues - dailyExpenses).toFixed(2)}</strong>
+          <strong>
+            R$ {(dayData.dailyRevenues - dayData.dailyExpenses).toFixed(2)}
+          </strong>
+        </div>
+        <div>
+          <span>Saldo Acumulado</span>
+          <strong>R$ {dayData.cumulativeBalance.toFixed(2)}</strong>
         </div>
       </div>
 
       <div className="transactions-list">
-        {/* Secção de Receitas */}
         <div className="transaction-section">
           <h2 className="section-title">
             <CheckCircle size={22} /> Receitas
           </h2>
-          {dayTransactions.filter((t) => t.type === 'revenue').length > 0 ? (
-            dayTransactions
+          {dayData.dayTransactions.filter((t) => t.type === 'revenue').length >
+          0 ? (
+            dayData.dayTransactions
               .filter((t) => t.type === 'revenue')
               .map((trans) => (
                 <div key={trans.id} className="transaction-card revenue">
@@ -126,13 +166,13 @@ export function DayDetailsView({
           )}
         </div>
 
-        {/* Secção de Despesas */}
         <div className="transaction-section">
           <h2 className="section-title">
             <MinusCircle size={22} /> Despesas
           </h2>
-          {dayTransactions.filter((t) => t.type === 'expense').length > 0 ? (
-            dayTransactions
+          {dayData.dayTransactions.filter((t) => t.type === 'expense').length >
+          0 ? (
+            dayData.dayTransactions
               .filter((t) => t.type === 'expense')
               .map((trans) => (
                 <div key={trans.id} className="transaction-card expense">
