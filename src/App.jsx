@@ -8,18 +8,8 @@ import { LoginScreen } from './components/LoginScreen'
 import { CalendarView } from './views/CalendarView'
 import { ExpenseForm } from './views/ExpenseForm'
 import { RevenueForm } from './views/RevenueForm'
-import { SettingsView } from './views/SettingsView' // Importação real
-
-// Placeholder
-const DayDetailsView = ({ selectedDate }) => (
-  <div className="page-content">
-    <h1>Detalhes do Dia</h1>
-    <p>
-      Data selecionada:{' '}
-      {selectedDate ? selectedDate.toLocaleDateString() : 'Nenhuma'}
-    </p>
-  </div>
-)
+import { SettingsView } from './views/SettingsView'
+import { DayDetailsView } from './views/DayDetailsView' // Importação real
 
 function App() {
   const { user, loadingAuth, db, appId } = useAuth()
@@ -70,13 +60,14 @@ function App() {
       creditCards,
       setCurrentPage,
       setSelectedDate,
+      selectedDate, // Passa a data selecionada
     }
 
     if (loadingData && !loadingAuth) {
       return (
         <div className="loading-container">
           <div className="spinner"></div>
-          <p>Carregando dados...</p>
+          <p>A carregar dados...</p>
         </div>
       )
     }
@@ -103,7 +94,7 @@ function App() {
       case 'settings':
         return <SettingsView {...props} />
       case 'dayDetails':
-        return <DayDetailsView {...props} selectedDate={selectedDate} />
+        return <DayDetailsView {...props} />
       default:
         return <CalendarView {...props} />
     }

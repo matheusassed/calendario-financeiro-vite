@@ -100,7 +100,9 @@ export function CalendarView({
         <button onClick={handlePrevMonth} className="nav-button">
           <ChevronLeft />
         </button>
-        <h2 className="calendar-title">{`${monthData.monthName} de ${monthData.year}`}</h2>
+        <h2 className="calendar-title">{`${monthData.monthName[0].toUpperCase()}${monthData.monthName.slice(
+          1,
+        )} de ${monthData.year}`}</h2>
         <button onClick={handleNextMonth} className="nav-button">
           <ChevronRight />
         </button>

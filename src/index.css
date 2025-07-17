@@ -263,7 +263,6 @@ body {
 .calendar-title {
   font-size: 1.5rem;
   font-weight: 600;
-  text-transform: capitalize;
 }
 
 .nav-button {
@@ -535,4 +534,166 @@ body {
 .delete-button:hover {
   color: #ef4444; /* red-500 */
   background-color: #fee2e2; /* red-100 */
+}
+
+/* DETALHE DIA */
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+  color: #4b5563;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.details-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  text-transform: capitalize;
+}
+
+.details-summary-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-bottom: 2rem;
+}
+
+.details-summary-card > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.details-summary-card span {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.details-summary-card strong {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.summary-revenue {
+  color: #16a34a;
+}
+
+.summary-expense {
+  color: #dc2626;
+}
+
+.transactions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.transaction-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.section-title svg {
+  color: var(--primary-color);
+}
+
+.transaction-card {
+  background-color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-left: 5px solid;
+}
+
+.transaction-card.revenue {
+  border-left-color: #22c55e;
+}
+
+.transaction-card.expense {
+  border-left-color: #ef4444;
+}
+
+.transaction-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.transaction-description {
+  font-weight: 500;
+}
+
+.transaction-category {
+  font-size: 0.8rem;
+  color: #6b7280;
+  background-color: #f3f4f6;
+  padding: 0.1rem 0.5rem;
+  border-radius: 12px;
+  align-self: flex-start;
+}
+
+.transaction-info-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.transaction-value {
+  font-weight: 500;
+  font-size: 1rem;
+  min-width: 80px;
+  text-align: right;
+}
+
+.transaction-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.transaction-actions button {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  transition:
+    color 0.2s,
+    background-color 0.2s;
+}
+
+.transaction-actions button:hover {
+  color: var(--primary-color);
+  background-color: #e0e7ff;
+}
+
+.no-transactions {
+  color: #6b7280;
+  padding: 1rem;
+  text-align: center;
+  background-color: #f9fafb;
+  border-radius: 8px;
 }
