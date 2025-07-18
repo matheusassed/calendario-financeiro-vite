@@ -27,13 +27,16 @@ export function ExpenseForm({
 
   const isEditing = !!initialData
 
-  // Lógica para sugerir o Mês Fiscal
+  // --- LÓGICA DE SUGESTÃO DO MÊS FISCAL ---
+  // Este useEffect é executado sempre que a data, forma de pagamento ou cartão são alterados.
   useEffect(() => {
+    // Não sugere automaticamente se estiver no modo de edição.
     if (isEditing) return
 
     const transactionDate = new Date(formData.date + 'T12:00:00')
     let suggestedFiscalMonth = formatFiscalMonth(transactionDate) // Padrão
 
+    // Prioridade 1: Lógica do Cartão de Crédito
     if (formData.paymentMethod === 'credit' && formData.cardId) {
       const card = creditCards.find((c) => c.id === formData.cardId)
       if (card && card.invoiceCloseDay) {
@@ -43,7 +46,9 @@ export function ExpenseForm({
           suggestedFiscalMonth = formatFiscalMonth(nextMonth)
         }
       }
-    } else if (globalSettings && globalSettings.monthCloseRule) {
+    }
+    // Prioridade 2: Lógica Global
+    else if (globalSettings && globalSettings.monthCloseRule) {
       const closeDate = calculateCloseDate(
         globalSettings.monthCloseRule,
         transactionDate,
@@ -55,6 +60,7 @@ export function ExpenseForm({
       }
     }
 
+    // Atualiza o estado com o mês fiscal sugerido.
     setFormData((prev) => ({ ...prev, fiscalMonth: suggestedFiscalMonth }))
   }, [
     formData.date,
@@ -95,7 +101,7 @@ export function ExpenseForm({
     setLoading(true)
 
     const loadingToast = toast.loading(
-      isEditing ? 'A atualizar despesa...' : 'A guardar despesa...',
+      isEditing ? 'Atualizando despesa...' : 'Salvando despesa...',
     )
     try {
       const transactionDate = new Date(formData.date + 'T12:00:00')
@@ -130,9 +136,9 @@ export function ExpenseForm({
 
       if (onSave) onSave()
     } catch (err) {
-      console.error('Erro ao guardar despesa:', err)
-      toast.error('Ocorreu um erro ao guardar a despesa.', { id: loadingToast })
-      setError('Ocorreu um erro ao guardar a despesa.')
+      console.error('Erro ao salvar despesa:', err)
+      toast.error('Ocorreu um erro ao salvar a despesa.', { id: loadingToast })
+      setError('Ocorreu um erro ao salvar a despesa.')
     } finally {
       setLoading(false)
     }
@@ -261,10 +267,10 @@ export function ExpenseForm({
           </button>
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading
-              ? 'A guardar...'
+              ? 'Salvando...'
               : isEditing
-                ? 'Guardar Alterações'
-                : 'Guardar Despesa'}
+                ? 'Salvar Alterações'
+                : 'Salvar Despesa'}
           </button>
         </div>
       </form>
