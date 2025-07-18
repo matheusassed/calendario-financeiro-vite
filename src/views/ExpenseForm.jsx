@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
-import { formatFiscalMonth } from '../utils/helpers'
+import { formatFiscalMonth, calculateCloseDate } from '../utils/helpers'
 import toast from 'react-hot-toast'
 
 export function ExpenseForm({
   onSave,
   onCancel,
   categories,
+  creditCards,
   initialData,
+  globalSettings,
 }) {
   const { db, user, appId } = useAuth()
   const [formData, setFormData] = useState({
@@ -18,11 +20,50 @@ export function ExpenseForm({
     paymentMethod: 'cash',
     categoryId: '',
     cardId: '',
+    fiscalMonth: formatFiscalMonth(new Date()),
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const isEditing = !!initialData
+
+  // Lógica para sugerir o Mês Fiscal
+  useEffect(() => {
+    if (isEditing) return
+
+    const transactionDate = new Date(formData.date + 'T12:00:00')
+    let suggestedFiscalMonth = formatFiscalMonth(transactionDate) // Padrão
+
+    if (formData.paymentMethod === 'credit' && formData.cardId) {
+      const card = creditCards.find((c) => c.id === formData.cardId)
+      if (card && card.invoiceCloseDay) {
+        if (transactionDate.getDate() > card.invoiceCloseDay) {
+          const nextMonth = new Date(transactionDate)
+          nextMonth.setMonth(nextMonth.getMonth() + 1)
+          suggestedFiscalMonth = formatFiscalMonth(nextMonth)
+        }
+      }
+    } else if (globalSettings && globalSettings.monthCloseRule) {
+      const closeDate = calculateCloseDate(
+        globalSettings.monthCloseRule,
+        transactionDate,
+      )
+      if (transactionDate > closeDate) {
+        const nextMonth = new Date(transactionDate)
+        nextMonth.setMonth(nextMonth.getMonth() + 1)
+        suggestedFiscalMonth = formatFiscalMonth(nextMonth)
+      }
+    }
+
+    setFormData((prev) => ({ ...prev, fiscalMonth: suggestedFiscalMonth }))
+  }, [
+    formData.date,
+    formData.paymentMethod,
+    formData.cardId,
+    globalSettings,
+    creditCards,
+    isEditing,
+  ])
 
   useEffect(() => {
     if (isEditing) {
@@ -33,6 +74,8 @@ export function ExpenseForm({
         paymentMethod: initialData.paymentMethod || 'cash',
         categoryId: initialData.categoryId || '',
         cardId: initialData.cardId || '',
+        fiscalMonth:
+          initialData.fiscalMonth || formatFiscalMonth(initialData.date),
       })
     }
   }, [initialData, isEditing])
@@ -52,7 +95,7 @@ export function ExpenseForm({
     setLoading(true)
 
     const loadingToast = toast.loading(
-      isEditing ? 'Atualizando despesa...' : 'Salvando despesa...',
+      isEditing ? 'A atualizar despesa...' : 'A guardar despesa...',
     )
     try {
       const transactionDate = new Date(formData.date + 'T12:00:00')
@@ -63,7 +106,7 @@ export function ExpenseForm({
         description: formData.description,
         value: parseFloat(formData.value),
         date: transactionDate,
-        fiscalMonth: formatFiscalMonth(transactionDate),
+        fiscalMonth: formData.fiscalMonth,
         paymentMethod: formData.paymentMethod,
         categoryId: formData.categoryId,
         cardId: formData.paymentMethod === 'credit' ? formData.cardId : '',
@@ -87,9 +130,9 @@ export function ExpenseForm({
 
       if (onSave) onSave()
     } catch (err) {
-      console.error('Erro ao salvar despesa:', err)
-      toast.error('Ocorreu um erro ao salvar a despesa.', { id: loadingToast })
-      setError('Ocorreu um erro ao salvar a despesa.')
+      console.error('Erro ao guardar despesa:', err)
+      toast.error('Ocorreu um erro ao guardar a despesa.', { id: loadingToast })
+      setError('Ocorreu um erro ao guardar a despesa.')
     } finally {
       setLoading(false)
     }
@@ -173,6 +216,40 @@ export function ExpenseForm({
           </select>
         </div>
 
+        {formData.paymentMethod === 'credit' && (
+          <div className="form-group">
+            <label htmlFor="cardId">Cartão de Crédito</label>
+            <select
+              id="cardId"
+              name="cardId"
+              value={formData.cardId}
+              onChange={handleChange}
+              required
+            >
+              <option value="" disabled>
+                Selecione um cartão
+              </option>
+              {creditCards.map((card) => (
+                <option key={card.id} value={card.id}>
+                  {card.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="form-group">
+          <label htmlFor="fiscalMonth">Mês Fiscal</label>
+          <input
+            type="month"
+            id="fiscalMonth"
+            name="fiscalMonth"
+            value={formData.fiscalMonth}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
         <div className="form-actions">
           <button
             type="button"
@@ -184,10 +261,10 @@ export function ExpenseForm({
           </button>
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading
-              ? 'Salvando...'
+              ? 'A guardar...'
               : isEditing
-                ? 'Salvar Alterações'
-                : 'Salvar Despesa'}
+                ? 'Guardar Alterações'
+                : 'Guardar Despesa'}
           </button>
         </div>
       </form>

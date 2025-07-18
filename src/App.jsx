@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react'
 import { useAuth } from './contexts/AuthContext'
 import { useFirestoreQuery } from './hooks/useFirestoreQuery'
-import { collection, query } from 'firebase/firestore'
+import { useFirestoreDocument } from './hooks/useFirestoreDocument' // 1. Importa o novo hook
+import { collection, query, doc } from 'firebase/firestore' // Importa 'doc'
 
 import { Sidebar } from './components/Sidebar'
 import { LoginScreen } from './components/LoginScreen'
@@ -9,7 +10,7 @@ import { CalendarView } from './views/CalendarView'
 import { ExpenseForm } from './views/ExpenseForm'
 import { RevenueForm } from './views/RevenueForm'
 import { SettingsView } from './views/SettingsView'
-import { DayDetailsView } from './views/DayDetailsView' // Importação real
+import { DayDetailsView } from './views/DayDetailsView'
 
 function App() {
   const { user, loadingAuth, db, appId } = useAuth()
@@ -17,37 +18,58 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(null)
 
   // --- Queries para o Firestore ---
-  const transactionsQuery = useMemo(() => {
-    if (!user) return null
-    return query(
-      collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
-    )
-  }, [db, appId, user])
+  const transactionsQuery = useMemo(
+    () =>
+      user
+        ? query(
+            collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
+          )
+        : null,
+    [db, appId, user],
+  )
+  const categoriesQuery = useMemo(
+    () =>
+      user
+        ? query(
+            collection(db, `artifacts/${appId}/users/${user.uid}/categories`),
+          )
+        : null,
+    [db, appId, user],
+  )
+  const creditCardsQuery = useMemo(
+    () =>
+      user
+        ? query(
+            collection(db, `artifacts/${appId}/users/${user.uid}/creditCards`),
+          )
+        : null,
+    [db, appId, user],
+  )
 
-  const categoriesQuery = useMemo(() => {
-    if (!user) return null
-    return query(
-      collection(db, `artifacts/${appId}/users/${user.uid}/categories`),
-    )
-  }, [db, appId, user])
+  // 2. Referência para o documento de configurações globais
+  const settingsRef = useMemo(
+    () =>
+      user
+        ? doc(db, `artifacts/${appId}/users/${user.uid}/settings`, 'global')
+        : null,
+    [db, appId, user],
+  )
 
-  const creditCardsQuery = useMemo(() => {
-    if (!user) return null
-    return query(
-      collection(db, `artifacts/${appId}/users/${user.uid}/creditCards`),
-    )
-  }, [db, appId, user])
-
-  // --- Busca de dados com o hook ---
+  // --- Busca de dados com os hooks ---
   const { data: transactions, loading: loadingTransactions } =
     useFirestoreQuery(transactionsQuery)
   const { data: categories, loading: loadingCategories } =
     useFirestoreQuery(categoriesQuery)
   const { data: creditCards, loading: loadingCreditCards } =
     useFirestoreQuery(creditCardsQuery)
+  const { data: globalSettings, loading: loadingSettings } =
+    useFirestoreDocument(settingsRef) // 3. Busca as configurações
 
   const loadingData =
-    loadingTransactions || loadingCategories || loadingCreditCards
+    loadingTransactions ||
+    loadingCategories ||
+    loadingCreditCards ||
+    loadingSettings
 
   const handleSave = () => {
     setCurrentPage('calendar')
@@ -58,9 +80,10 @@ function App() {
       transactions,
       categories,
       creditCards,
+      globalSettings, // 4. Passa as configurações para os componentes filhos
       setCurrentPage,
       setSelectedDate,
-      selectedDate, // Passa a data selecionada
+      selectedDate,
     }
 
     if (loadingData && !loadingAuth) {

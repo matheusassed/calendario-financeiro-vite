@@ -5,8 +5,8 @@
  * @returns {number} - O número de dias.
  */
 export const getDaysInMonth = (year, month) => {
-  return new Date(year, month + 1, 0).getDate()
-}
+  return new Date(year, month + 1, 0).getDate();
+};
 
 /**
  * Retorna o dia da semana para o primeiro dia de um mês.
@@ -15,8 +15,8 @@ export const getDaysInMonth = (year, month) => {
  * @returns {number} - O dia da semana (0 para Domingo, 1 para Segunda, etc.).
  */
 export const getFirstDayOfMonth = (year, month) => {
-  return new Date(year, month, 1).getDay()
-}
+  return new Date(year, month, 1).getDay();
+};
 
 /**
  * Formata um objeto Date para uma string no formato "YYYY-MM".
@@ -25,9 +25,43 @@ export const getFirstDayOfMonth = (year, month) => {
  */
 export const formatFiscalMonth = (date) => {
   if (!date || typeof date.getFullYear !== 'function') {
-    return ''
+    return '';
   }
-  const year = date.getFullYear()
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  return `${year}-${month}`
-}
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  return `${year}-${month}`;
+};
+
+/**
+ * NOVO: Calcula a data de fechamento real com base numa regra.
+ * @param {{type: string, value: number}} settings - A regra de configuração.
+ * @param {Date} referenceDate - A data de referência para determinar o mês e o ano.
+ * @returns {Date} A data de fechamento calculada.
+ */
+export const calculateCloseDate = (settings, referenceDate) => {
+  const year = referenceDate.getFullYear();
+  const month = referenceDate.getMonth();
+
+  if (settings.type === 'day') {
+    return new Date(year, month, settings.value);
+  }
+
+  if (settings.type === 'last_business_day') {
+    let date = new Date(year, month + 1, 0); // Começa no último dia do mês
+    let businessDaysFound = 0;
+    while (businessDaysFound <= settings.value) {
+      const dayOfWeek = date.getDay();
+      if (dayOfWeek > 0 && dayOfWeek < 6) { // É um dia útil (Seg-Sex)
+        businessDaysFound++;
+      }
+      if (businessDaysFound <= settings.value) {
+        date.setDate(date.getDate() - 1);
+      }
+    }
+    return date;
+  }
+
+  // Adicionar outras lógicas como 'first_business_day' aqui no futuro
+
+  return new Date(year, month, 25); // Fallback
+};

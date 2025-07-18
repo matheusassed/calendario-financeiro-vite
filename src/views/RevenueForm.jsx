@@ -1,20 +1,43 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
-import { formatFiscalMonth } from '../utils/helpers'
+import { formatFiscalMonth, calculateCloseDate } from '../utils/helpers'
 import toast from 'react-hot-toast'
 
-export function RevenueForm({ onSave, onCancel, initialData }) {
+export function RevenueForm({ onSave, onCancel, initialData, globalSettings }) {
   const { db, user, appId } = useAuth()
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     description: '',
     value: '',
+    fiscalMonth: formatFiscalMonth(new Date()),
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const isEditing = !!initialData
+
+  // Lógica para sugerir o Mês Fiscal
+  useEffect(() => {
+    if (isEditing) return
+
+    const transactionDate = new Date(formData.date + 'T12:00:00')
+    let suggestedFiscalMonth = formatFiscalMonth(transactionDate)
+
+    if (globalSettings && globalSettings.monthCloseRule) {
+      const closeDate = calculateCloseDate(
+        globalSettings.monthCloseRule,
+        transactionDate,
+      )
+      if (transactionDate > closeDate) {
+        const nextMonth = new Date(transactionDate)
+        nextMonth.setMonth(nextMonth.getMonth() + 1)
+        suggestedFiscalMonth = formatFiscalMonth(nextMonth)
+      }
+    }
+
+    setFormData((prev) => ({ ...prev, fiscalMonth: suggestedFiscalMonth }))
+  }, [formData.date, globalSettings, isEditing])
 
   useEffect(() => {
     if (isEditing) {
@@ -22,6 +45,8 @@ export function RevenueForm({ onSave, onCancel, initialData }) {
         date: initialData.date.toISOString().split('T')[0],
         description: initialData.description || '',
         value: initialData.value || '',
+        fiscalMonth:
+          initialData.fiscalMonth || formatFiscalMonth(initialData.date),
       })
     }
   }, [initialData, isEditing])
@@ -41,7 +66,7 @@ export function RevenueForm({ onSave, onCancel, initialData }) {
     setLoading(true)
 
     const loadingToast = toast.loading(
-      isEditing ? 'Atualizando receita...' : 'Salvando receita...',
+      isEditing ? 'A atualizar receita...' : 'A guardar receita...',
     )
     try {
       const transactionDate = new Date(formData.date + 'T12:00:00')
@@ -52,7 +77,7 @@ export function RevenueForm({ onSave, onCancel, initialData }) {
         description: formData.description,
         value: parseFloat(formData.value),
         date: transactionDate,
-        fiscalMonth: formatFiscalMonth(transactionDate),
+        fiscalMonth: formData.fiscalMonth,
       }
 
       if (isEditing) {
@@ -74,8 +99,8 @@ export function RevenueForm({ onSave, onCancel, initialData }) {
       if (onSave) onSave()
     } catch (err) {
       console.error('Erro ao adicionar receita:', err)
-      toast.error('Ocorreu um erro ao salvar a receita.', { id: loadingToast })
-      setError('Ocorreu um erro ao salvar a receita.')
+      toast.error('Ocorreu um erro ao guardar a receita.', { id: loadingToast })
+      setError('Ocorreu um erro ao guardar a receita.')
     } finally {
       setLoading(false)
     }
@@ -125,6 +150,18 @@ export function RevenueForm({ onSave, onCancel, initialData }) {
           </div>
         </div>
 
+        <div className="form-group">
+          <label htmlFor="fiscalMonth">Mês Fiscal</label>
+          <input
+            type="month"
+            id="fiscalMonth"
+            name="fiscalMonth"
+            value={formData.fiscalMonth}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
         <div className="form-actions">
           <button
             type="button"
@@ -136,10 +173,10 @@ export function RevenueForm({ onSave, onCancel, initialData }) {
           </button>
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading
-              ? 'Salvando...'
+              ? 'A guardar...'
               : isEditing
-                ? 'Salvar Alterações'
-                : 'Salvar Receita'}
+                ? 'Guardar Alterações'
+                : 'Guardar Receita'}
           </button>
         </div>
       </form>

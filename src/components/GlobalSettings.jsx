@@ -6,11 +6,11 @@ import { Save } from 'lucide-react'
 
 export function GlobalSettings() {
   const { db, user, appId } = useAuth()
-  const [closeDay, setCloseDay] = useState('')
+  // O estado agora é um objeto para guardar a regra completa
+  const [settings, setSettings] = useState({ type: 'day', value: 25 })
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
 
-  // Busca a configuração existente ao carregar o componente
   useEffect(() => {
     const fetchSettings = async () => {
       const docRef = doc(
@@ -19,8 +19,8 @@ export function GlobalSettings() {
         'global',
       )
       const docSnap = await getDoc(docRef)
-      if (docSnap.exists()) {
-        setCloseDay(docSnap.data().monthCloseDay || '')
+      if (docSnap.exists() && docSnap.data().monthCloseRule) {
+        setSettings(docSnap.data().monthCloseRule)
       }
       setLoadingData(false)
     }
@@ -37,9 +37,12 @@ export function GlobalSettings() {
         `artifacts/${appId}/users/${user.uid}/settings`,
         'global',
       )
+      // Guarda o objeto da regra no Firestore
       await setDoc(
         settingsRef,
-        { monthCloseDay: parseInt(closeDay, 10) },
+        {
+          monthCloseRule: { ...settings, value: parseInt(settings.value, 10) },
+        },
         { merge: true },
       )
       toast.success('Configurações guardadas!', { id: loadingToast })
@@ -52,6 +55,17 @@ export function GlobalSettings() {
     setLoading(false)
   }
 
+  const handleTypeChange = (e) => {
+    const newType = e.target.value
+    // Reseta o valor para um padrão seguro ao mudar o tipo
+    const defaultValue = newType === 'last_business_day' ? 1 : 25
+    setSettings({ type: newType, value: defaultValue })
+  }
+
+  const handleValueChange = (e) => {
+    setSettings((prev) => ({ ...prev, value: e.target.value }))
+  }
+
   if (loadingData) {
     return <div className="settings-card">A carregar configurações...</div>
   }
@@ -61,20 +75,32 @@ export function GlobalSettings() {
       <h2 className="settings-title">Configurações Gerais</h2>
       <form onSubmit={handleSave} className="settings-form">
         <div className="form-group">
-          <label htmlFor="monthCloseDay">Dia de Fechamento do Mês</label>
-          <input
-            type="number"
-            id="monthCloseDay"
-            value={closeDay}
-            onChange={(e) => setCloseDay(e.target.value)}
-            placeholder="Ex: 25"
-            min="1"
-            max="31"
-            className="settings-input"
-          />
+          <label htmlFor="monthCloseDay">Regra de Fechamento do Mês</label>
+          <div className="dynamic-rule-group">
+            <select
+              value={settings.type}
+              onChange={handleTypeChange}
+              className="settings-select"
+            >
+              <option value="day">Dia Fixo</option>
+              <option value="last_business_day">
+                Último(s) Dia(s) Útil(eis)
+              </option>
+            </select>
+            <input
+              type="number"
+              value={settings.value}
+              onChange={handleValueChange}
+              className="settings-input"
+              min="0"
+              max="31"
+            />
+          </div>
           <p className="input-helper">
-            Transações (exceto cartão de crédito) feitas a partir deste dia
-            serão sugeridas para o próximo mês fiscal.
+            {settings.type === 'day' &&
+              'Transações (exceto cartão) a partir deste dia serão sugeridas para o próximo mês fiscal.'}
+            {settings.type === 'last_business_day' &&
+              'Contagem a partir do fim do mês (0 = último dia útil, 1 = penúltimo, etc.).'}
           </p>
         </div>
         <button type="submit" className="btn-primary" disabled={loading}>

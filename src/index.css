@@ -879,13 +879,27 @@ body {
   gap: 1rem;
 }
 
-.settings-input {
-  width: 100%;
-  max-width: 200px; /* Limita a largura do input numérico */
+.settings-input,
+.settings-select {
   padding: 0.75rem;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 1rem;
+}
+
+.settings-select {
+  flex-grow: 1;
+}
+
+.settings-input {
+  width: 100px;
+}
+
+.dynamic-rule-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  max-width: 450px;
 }
 
 .input-helper {
