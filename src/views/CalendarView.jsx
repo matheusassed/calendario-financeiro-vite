@@ -13,7 +13,6 @@ export function CalendarView({
 }) {
   const [currentDate, setCurrentDate] = useState(new Date())
 
-  // Guarda a data de hoje para comparação
   const today = new Date()
 
   const currentYear = currentDate.getFullYear()
@@ -35,23 +34,40 @@ export function CalendarView({
 
   const monthData = useMemo(() => {
     const daysInMonth = getDaysInMonth(currentYear, currentMonth)
-    const firstDay = getFirstDayOfMonth(currentYear, currentMonth) // 0 = Domingo, 1 = Segunda...
-
-    // MELHORIA: A semana agora começa no Domingo, então não precisamos mais de 'adjustedFirstDay'.
-    // O valor de 'firstDay' já é o número correto de células em branco.
+    const firstDay = getFirstDayOfMonth(currentYear, currentMonth)
 
     const fiscalMonthStr = formatFiscalMonth(
       new Date(currentYear, currentMonth, 1),
     )
-    const relevantTransactions = transactions.filter(
+
+    // 1. Obtém TODAS as transações para o mês fiscal atual.
+    const allTransactionsForFiscalMonth = transactions.filter(
       (t) => t.fiscalMonth === fiscalMonthStr,
     )
 
-    let cumulativeBalance = 0
+    // 2. Calcula o saldo inicial de transações que pertencem a este mês fiscal, mas ocorreram em meses anteriores.
+    const initialBalance = allTransactionsForFiscalMonth
+      .filter((t) => {
+        const tDate = t.date
+        return (
+          tDate.getFullYear() < currentYear ||
+          (tDate.getFullYear() === currentYear &&
+            tDate.getMonth() < currentMonth)
+        )
+      })
+      .reduce((acc, t) => {
+        if (t.type === 'revenue') return acc + t.value
+        if (t.type === 'expense') return acc - t.value
+        return acc
+      }, 0)
+
+    // 3. Começa o saldo cumulativo com este valor "transportado".
+    let cumulativeBalance = initialBalance
     const dailyData = Array.from({ length: daysInMonth }, (_, i) => {
       const day = i + 1
 
-      const dayTransactions = relevantTransactions.filter((t) => {
+      // Filtra transações que ocorreram NAQUELA DATA e pertencem a ESTE MÊS FISCAL.
+      const dayTransactions = allTransactionsForFiscalMonth.filter((t) => {
         const tDate = t.date
         return (
           tDate.getDate() === day &&
@@ -68,6 +84,7 @@ export function CalendarView({
         .filter((t) => t.type === 'expense')
         .reduce((sum, t) => sum + t.value, 0)
 
+      // O saldo acumulado é atualizado com as transações do dia.
       cumulativeBalance += dayRevenues - dayExpenses
 
       return {
@@ -80,7 +97,7 @@ export function CalendarView({
 
     return {
       daysInMonth,
-      firstDay, // Usaremos o valor original
+      firstDay,
       dailyData,
       monthName: new Date(currentYear, currentMonth).toLocaleDateString(
         'pt-BR',
@@ -91,7 +108,6 @@ export function CalendarView({
   }, [currentYear, currentMonth, transactions])
 
   const blanks = Array.from({ length: monthData.firstDay })
-  // MELHORIA: A ordem dos dias da semana foi alterada.
   const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
   return (
@@ -100,9 +116,7 @@ export function CalendarView({
         <button onClick={handlePrevMonth} className="nav-button">
           <ChevronLeft />
         </button>
-        <h2 className="calendar-title">{`${monthData.monthName[0].toUpperCase()}${monthData.monthName.slice(
-          1,
-        )} de ${monthData.year}`}</h2>
+        <h2 className="calendar-title">{`${monthData.monthName} de ${monthData.year}`}</h2>
         <button onClick={handleNextMonth} className="nav-button">
           <ChevronRight />
         </button>
@@ -117,13 +131,11 @@ export function CalendarView({
           <div key={`blank-${i}`} className="day-cell blank"></div>
         ))}
         {monthData.dailyData.map((data) => {
-          // MELHORIA: Verifica se o dia renderizado é o dia atual.
           const isToday =
             data.day === today.getDate() &&
             currentMonth === today.getMonth() &&
             currentYear === today.getFullYear()
 
-          // Constrói as classes dinamicamente
           const dayCellClasses = `day-cell ${isToday ? 'today' : ''}`
 
           return (

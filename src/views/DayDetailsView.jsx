@@ -139,6 +139,8 @@ export function DayDetailsView({
   const getCategoryName = (id) =>
     categories.find((c) => c.id === id)?.name || 'Sem Categoria'
 
+  const currentFiscalMonth = formatFiscalMonth(selectedDate)
+
   return (
     <>
       <ConfirmModal
@@ -225,34 +227,43 @@ export function DayDetailsView({
               .length > 0 ? (
               dayData.dayTransactions
                 .filter((t) => t.type === 'revenue')
-                .map((trans) => (
-                  <div key={trans.id} className="transaction-card revenue">
-                    <div className="transaction-info">
-                      <p className="transaction-description">
-                        {trans.description}
-                      </p>
-                    </div>
-                    <div className="transaction-info-right">
-                      <p className="transaction-value">
-                        + R$ {trans.value.toFixed(2)}
-                      </p>
-                      <div className="transaction-actions">
-                        <button
-                          onClick={() => handleEditClick(trans)}
-                          title="Editar"
-                        >
-                          <FileText size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(trans)}
-                          title="Excluir"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                .map((trans) => {
+                  const isFutureFiscalMonth =
+                    trans.fiscalMonth !== currentFiscalMonth
+                  return (
+                    <div key={trans.id} className="transaction-card revenue">
+                      <div className="transaction-info">
+                        <p className="transaction-description">
+                          {trans.description}
+                        </p>
+                        {isFutureFiscalMonth && (
+                          <span className="future-fiscal-month-tag">
+                            Mês Fiscal: {trans.fiscalMonth}
+                          </span>
+                        )}
+                      </div>
+                      <div className="transaction-info-right">
+                        <p className="transaction-value">
+                          + R$ {trans.value.toFixed(2)}
+                        </p>
+                        <div className="transaction-actions">
+                          <button
+                            onClick={() => handleEditClick(trans)}
+                            title="Editar"
+                          >
+                            <FileText size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(trans)}
+                            title="Excluir"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
             ) : (
               <p className="no-transactions">Nenhuma receita neste dia.</p>
             )}
@@ -266,37 +277,51 @@ export function DayDetailsView({
               .length > 0 ? (
               dayData.dayTransactions
                 .filter((t) => t.type === 'expense')
-                .map((trans) => (
-                  <div key={trans.id} className="transaction-card expense">
-                    <div className="transaction-info">
-                      <p className="transaction-description">
-                        {trans.description}
-                      </p>
-                      <span className="transaction-category">
-                        {getCategoryName(trans.categoryId)}
-                      </span>
-                    </div>
-                    <div className="transaction-info-right">
-                      <p className="transaction-value">
-                        - R$ {trans.value.toFixed(2)}
-                      </p>
-                      <div className="transaction-actions">
-                        <button
-                          onClick={() => handleEditClick(trans)}
-                          title="Editar"
-                        >
-                          <FileText size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(trans)}
-                          title="Excluir"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                .map((trans) => {
+                  const isFutureFiscalMonth =
+                    trans.fiscalMonth !== currentFiscalMonth
+                  return (
+                    <div key={trans.id} className="transaction-card expense">
+                      <div className="transaction-info">
+                        <p className="transaction-description">
+                          {trans.description}
+                        </p>
+                        <div className="transaction-tags">
+                          <span className="transaction-category">
+                            {getCategoryName(trans.categoryId)}
+                          </span>
+                          {isFutureFiscalMonth && (
+                            <span className="future-fiscal-month-tag">
+                              {new Date(trans.fiscalMonth + '-01').toLocaleDateString('pt-BR', {
+                                month: 'long',
+                                timeZone: 'UTC',
+                              })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="transaction-info-right">
+                        <p className="transaction-value">
+                          - R$ {trans.value.toFixed(2)}
+                        </p>
+                        <div className="transaction-actions">
+                          <button
+                            onClick={() => handleEditClick(trans)}
+                            title="Editar"
+                          >
+                            <FileText size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(trans)}
+                            title="Excluir"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
             ) : (
               <p className="no-transactions">Nenhuma despesa neste dia.</p>
             )}
