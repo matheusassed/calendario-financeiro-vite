@@ -66,7 +66,7 @@ export function RevenueForm({ onSave, onCancel, initialData, globalSettings }) {
     setLoading(true)
 
     const loadingToast = toast.loading(
-      isEditing ? 'A atualizar receita...' : 'A guardar receita...',
+      isEditing ? 'Atualizando receita...' : 'Salvando receita...',
     )
     try {
       const transactionDate = new Date(formData.date + 'T12:00:00')
@@ -99,8 +99,8 @@ export function RevenueForm({ onSave, onCancel, initialData, globalSettings }) {
       if (onSave) onSave()
     } catch (err) {
       console.error('Erro ao adicionar receita:', err)
-      toast.error('Ocorreu um erro ao guardar a receita.', { id: loadingToast })
-      setError('Ocorreu um erro ao guardar a receita.')
+      toast.error('Ocorreu um erro ao salvar a receita.', { id: loadingToast })
+      setError('Ocorreu um erro ao salvar a receita.')
     } finally {
       setLoading(false)
     }
@@ -173,10 +173,10 @@ export function RevenueForm({ onSave, onCancel, initialData, globalSettings }) {
           </button>
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading
-              ? 'A guardar...'
+              ? 'Salvando...'
               : isEditing
-                ? 'Guardar Alterações'
-                : 'Guardar Receita'}
+                ? 'Salvar Alterações'
+                : 'Salvar Receita'}
           </button>
         </div>
       </form>
