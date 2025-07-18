@@ -1,14 +1,13 @@
-import React from 'react'
 import { CategoryManagement } from '../components/CategoryManagement'
+import { CreditCardManagement } from '../components/CreditCardManagement' // 1. Importa o novo componente
 
-// No futuro, outros componentes como CreditCardManagement podem ser adicionados aqui
-export function SettingsView({ categories }) {
+export function SettingsView({ categories, creditCards }) {
   return (
     <div className="page-content">
       <h1 className="form-title">Configurações</h1>
       <div className="settings-container">
         <CategoryManagement categories={categories} />
-        {/* <CreditCardManagement creditCards={creditCards} /> */}
+        <CreditCardManagement creditCards={creditCards} />
       </div>
     </div>
   )

@@ -837,3 +837,36 @@ body {
 }
 
 /* MODAL */
+
+/* CARTÃO DE CRÉDITO */
+
+.add-item-form-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr; /* Colunas para nome, dias e botão */
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  align-items: center;
+}
+
+.item-details {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.item-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  background-color: #f3f4f6;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+}
+
+/* Ajuste para ecrãs menores */
+@media (max-width: 768px) {
+  .add-item-form-grid {
+    grid-template-columns: 1fr; /* Uma coluna em ecrãs pequenos */
+  }
+}
+
+/* CARTÃO DE CRÉDITO */
