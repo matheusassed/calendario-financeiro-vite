@@ -1,10 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { addDoc, collection } from 'firebase/firestore'
+import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
 import { formatFiscalMonth } from '../utils/helpers'
 import toast from 'react-hot-toast'
 
-export function RevenueForm({ onSave, onCancel }) {
+export function RevenueForm({ onSave, onCancel, initialData }) {
   const { db, user, appId } = useAuth()
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -13,6 +13,18 @@ export function RevenueForm({ onSave, onCancel }) {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const isEditing = !!initialData
+
+  useEffect(() => {
+    if (isEditing) {
+      setFormData({
+        date: initialData.date.toISOString().split('T')[0],
+        description: initialData.description || '',
+        value: initialData.value || '',
+      })
+    }
+  }, [initialData, isEditing])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -28,7 +40,9 @@ export function RevenueForm({ onSave, onCancel }) {
     setError('')
     setLoading(true)
 
-    const loadingToast = toast.loading('Salvando receita...')
+    const loadingToast = toast.loading(
+      isEditing ? 'Atualizando receita...' : 'Salvando receita...',
+    )
     try {
       const transactionDate = new Date(formData.date + 'T12:00:00')
 
@@ -39,15 +53,24 @@ export function RevenueForm({ onSave, onCancel }) {
         value: parseFloat(formData.value),
         date: transactionDate,
         fiscalMonth: formatFiscalMonth(transactionDate),
-        isRecurring: false,
       }
 
-      await addDoc(
-        collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
-        dataToSave,
-      )
+      if (isEditing) {
+        const docRef = doc(
+          db,
+          `artifacts/${appId}/users/${user.uid}/transactions`,
+          initialData.id,
+        )
+        await updateDoc(docRef, dataToSave)
+        toast.success('Receita atualizada com sucesso!', { id: loadingToast })
+      } else {
+        await addDoc(
+          collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
+          dataToSave,
+        )
+        toast.success('Receita adicionada com sucesso!', { id: loadingToast })
+      }
 
-      toast.success('Receita adicionada com sucesso!', { id: loadingToast })
       if (onSave) onSave()
     } catch (err) {
       console.error('Erro ao adicionar receita:', err)
@@ -59,8 +82,8 @@ export function RevenueForm({ onSave, onCancel }) {
   }
 
   return (
-    <div className="page-content">
-      <h1 className="form-title">Adicionar Nova Receita</h1>
+    <div className={`page-content ${isEditing ? 'form-in-modal' : ''}`}>
+      {!isEditing && <h1 className="form-title">Adicionar Nova Receita</h1>}
       <form onSubmit={handleSubmit} className="transaction-form">
         {error && <p className="form-error">{error}</p>}
 
@@ -112,7 +135,11 @@ export function RevenueForm({ onSave, onCancel }) {
             Cancelar
           </button>
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Salvando...' : 'Salvar Receita'}
+            {loading
+              ? 'Salvando...'
+              : isEditing
+                ? 'Salvar Alterações'
+                : 'Salvar Receita'}
           </button>
         </div>
       </form>

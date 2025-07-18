@@ -1,10 +1,15 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { addDoc, collection } from 'firebase/firestore'
+import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
 import { formatFiscalMonth } from '../utils/helpers'
 import toast from 'react-hot-toast'
 
-export function ExpenseForm({ onSave, onCancel, categories }) {
+export function ExpenseForm({
+  onSave,
+  onCancel,
+  categories,
+  initialData,
+}) {
   const { db, user, appId } = useAuth()
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -16,6 +21,21 @@ export function ExpenseForm({ onSave, onCancel, categories }) {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const isEditing = !!initialData
+
+  useEffect(() => {
+    if (isEditing) {
+      setFormData({
+        date: initialData.date.toISOString().split('T')[0],
+        description: initialData.description || '',
+        value: initialData.value || '',
+        paymentMethod: initialData.paymentMethod || 'cash',
+        categoryId: initialData.categoryId || '',
+        cardId: initialData.cardId || '',
+      })
+    }
+  }, [initialData, isEditing])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -31,7 +51,9 @@ export function ExpenseForm({ onSave, onCancel, categories }) {
     setError('')
     setLoading(true)
 
-    const loadingToast = toast.loading('Salvando despesa...')
+    const loadingToast = toast.loading(
+      isEditing ? 'Atualizando despesa...' : 'Salvando despesa...',
+    )
     try {
       const transactionDate = new Date(formData.date + 'T12:00:00')
 
@@ -45,19 +67,27 @@ export function ExpenseForm({ onSave, onCancel, categories }) {
         paymentMethod: formData.paymentMethod,
         categoryId: formData.categoryId,
         cardId: formData.paymentMethod === 'credit' ? formData.cardId : '',
-        isRecurring: false,
-        isInstallment: false,
       }
 
-      await addDoc(
-        collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
-        dataToSave,
-      )
+      if (isEditing) {
+        const docRef = doc(
+          db,
+          `artifacts/${appId}/users/${user.uid}/transactions`,
+          initialData.id,
+        )
+        await updateDoc(docRef, dataToSave)
+        toast.success('Despesa atualizada com sucesso!', { id: loadingToast })
+      } else {
+        await addDoc(
+          collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
+          dataToSave,
+        )
+        toast.success('Despesa adicionada com sucesso!', { id: loadingToast })
+      }
 
-      toast.success('Despesa adicionada com sucesso!', { id: loadingToast })
       if (onSave) onSave()
     } catch (err) {
-      console.error('Erro ao adicionar despesa:', err)
+      console.error('Erro ao salvar despesa:', err)
       toast.error('Ocorreu um erro ao salvar a despesa.', { id: loadingToast })
       setError('Ocorreu um erro ao salvar a despesa.')
     } finally {
@@ -66,8 +96,8 @@ export function ExpenseForm({ onSave, onCancel, categories }) {
   }
 
   return (
-    <div className="page-content">
-      <h1 className="form-title">Adicionar Nova Despesa</h1>
+    <div className={`page-content ${isEditing ? 'form-in-modal' : ''}`}>
+      {!isEditing && <h1 className="form-title">Adicionar Nova Despesa</h1>}
       <form onSubmit={handleSubmit} className="transaction-form">
         {error && <p className="form-error">{error}</p>}
 
@@ -153,7 +183,11 @@ export function ExpenseForm({ onSave, onCancel, categories }) {
             Cancelar
           </button>
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Salvando...' : 'Salvar Despesa'}
+            {loading
+              ? 'Salvando...'
+              : isEditing
+                ? 'Salvar Alterações'
+                : 'Salvar Despesa'}
           </button>
         </div>
       </form>

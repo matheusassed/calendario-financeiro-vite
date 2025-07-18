@@ -11,6 +11,9 @@ import {
 } from 'lucide-react'
 import { formatFiscalMonth } from '../utils/helpers'
 import { ConfirmModal } from '../components/ConfirmModal'
+import { Modal } from '../components/Modal'
+import { ExpenseForm } from './ExpenseForm'
+import { RevenueForm } from './RevenueForm'
 
 const formatDate = (date) => {
   if (!date) return ''
@@ -27,11 +30,16 @@ export function DayDetailsView({
   selectedDate,
   transactions,
   categories,
+  creditCards,
   setCurrentPage,
 }) {
   const { db, user, appId } = useAuth()
-  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [transactionToDelete, setTransactionToDelete] = useState(null)
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [transactionToEdit, setTransactionToEdit] = useState(null)
 
   const dayData = useMemo(() => {
     if (!selectedDate) {
@@ -93,7 +101,7 @@ export function DayDetailsView({
 
   const handleDeleteClick = (transaction) => {
     setTransactionToDelete(transaction)
-    setIsModalOpen(true)
+    setIsDeleteModalOpen(true)
   }
 
   const confirmDelete = async () => {
@@ -113,9 +121,19 @@ export function DayDetailsView({
       console.error('Erro ao excluir:', error)
       toast.error('Não foi possível excluir a transação.', { id: loadingToast })
     } finally {
-      setIsModalOpen(false)
+      setIsDeleteModalOpen(false)
       setTransactionToDelete(null)
     }
+  }
+
+  const handleEditClick = (transaction) => {
+    setTransactionToEdit(transaction)
+    setIsEditModalOpen(true)
+  }
+
+  const handleSaveEdit = () => {
+    setIsEditModalOpen(false)
+    setTransactionToEdit(null)
   }
 
   const getCategoryName = (id) =>
@@ -124,8 +142,8 @@ export function DayDetailsView({
   return (
     <>
       <ConfirmModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDelete}
         title="Confirmar Exclusão"
       >
@@ -135,6 +153,33 @@ export function DayDetailsView({
         </p>
         <p>Esta ação não pode ser desfeita.</p>
       </ConfirmModal>
+
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={
+          transactionToEdit?.type === 'expense'
+            ? 'Editar Despesa'
+            : 'Editar Receita'
+        }
+      >
+        {transactionToEdit?.type === 'expense' && (
+          <ExpenseForm
+            initialData={transactionToEdit}
+            onSave={handleSaveEdit}
+            onCancel={() => setIsEditModalOpen(false)}
+            categories={categories}
+            creditCards={creditCards}
+          />
+        )}
+        {transactionToEdit?.type === 'revenue' && (
+          <RevenueForm
+            initialData={transactionToEdit}
+            onSave={handleSaveEdit}
+            onCancel={() => setIsEditModalOpen(false)}
+          />
+        )}
+      </Modal>
 
       <div className="page-content">
         <button
@@ -186,20 +231,25 @@ export function DayDetailsView({
                       <p className="transaction-description">
                         {trans.description}
                       </p>
+                    </div>
+                    <div className="transaction-info-right">
                       <p className="transaction-value">
                         + R$ {trans.value.toFixed(2)}
                       </p>
-                    </div>
-                    <div className="transaction-actions">
-                      <button title="Editar">
-                        <FileText size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(trans)}
-                        title="Excluir"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      <div className="transaction-actions">
+                        <button
+                          onClick={() => handleEditClick(trans)}
+                          title="Editar"
+                        >
+                          <FileText size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(trans)}
+                          title="Excluir"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -231,7 +281,10 @@ export function DayDetailsView({
                         - R$ {trans.value.toFixed(2)}
                       </p>
                       <div className="transaction-actions">
-                        <button title="Editar">
+                        <button
+                          onClick={() => handleEditClick(trans)}
+                          title="Editar"
+                        >
                           <FileText size={18} />
                         </button>
                         <button

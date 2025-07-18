@@ -126,7 +126,7 @@ body {
   color: white;
   border: none;
   padding: 0.75rem;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
@@ -152,6 +152,7 @@ body {
   color: var(--primary-color);
   font-weight: 500;
   cursor: pointer;
+  border-radius: 4px;
 }
 
 .app-layout {
@@ -362,7 +363,10 @@ body {
   margin-bottom: 2rem;
 }
 
+/* CALENDARIO */
+
 /* FORMULÁRIO DE TRANSAÇÃO */
+
 .transaction-form {
   max-width: 600px;
   background-color: white;
@@ -445,6 +449,8 @@ body {
   margin-bottom: 1rem;
   font-size: 0.875rem;
 }
+
+/* FORMULÁRIO DE TRANSAÇÃO */
 
 /* CONFIGURAÇÕES */
 
@@ -535,6 +541,8 @@ body {
   color: #ef4444; /* red-500 */
   background-color: #fee2e2; /* red-100 */
 }
+
+/* CONFIGURAÇÕES */
 
 /* DETALHE DIA */
 
@@ -698,7 +706,10 @@ body {
   border-radius: 8px;
 }
 
+/* DETALHE DIA */
+
 /* MODAL */
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -735,19 +746,22 @@ body {
 
 .modal-content {
   background-color: white;
-  padding: 2rem;
+  padding: 1.5rem; /* Reduzido para melhor controle interno */
   border-radius: 12px;
   width: 90%;
-  max-width: 450px;
+  max-width: 500px; /* Um pouco maior para formulários */
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   animation: slideIn 0.3s ease;
 }
 
+/* CORREÇÃO: Ajustes no cabeçalho para alinhar o botão */
 .modal-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
   margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .modal-icon {
@@ -758,6 +772,27 @@ body {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
+}
+
+/* NOVO: Estilo para o botão de fechar */
+.modal-close-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.modal-close-button:hover {
+  background-color: #f3f4f6;
+  color: #1f2937;
 }
 
 .modal-body {
@@ -785,4 +820,20 @@ body {
 .btn-danger:hover {
   background-color: #b91c1c; /* red-700 */
 }
+
+.form-in-modal {
+  padding: 0;
+}
+
+.form-in-modal .transaction-form {
+  padding: 0;
+  box-shadow: none;
+}
+
+.form-in-modal .form-actions {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 1.5rem;
+}
+
 /* MODAL */
