@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
+import {
+  collection,
+  doc,
+  updateDoc,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  writeBatch,
+  serverTimestamp,
+  increment,
+} from 'firebase/firestore'
 import { formatFiscalMonth, calculateCloseDate } from '../utils/helpers'
 import toast from 'react-hot-toast'
 
@@ -27,50 +38,6 @@ export function ExpenseForm({
 
   const isEditing = !!initialData
 
-  // --- LÓGICA DE SUGESTÃO DO MÊS FISCAL ---
-  // Este useEffect é executado sempre que a data, forma de pagamento ou cartão são alterados.
-  useEffect(() => {
-    // Não sugere automaticamente se estiver no modo de edição.
-    if (isEditing) return
-
-    const transactionDate = new Date(formData.date + 'T12:00:00')
-    let suggestedFiscalMonth = formatFiscalMonth(transactionDate) // Padrão
-
-    // Prioridade 1: Lógica do Cartão de Crédito
-    if (formData.paymentMethod === 'credit' && formData.cardId) {
-      const card = creditCards.find((c) => c.id === formData.cardId)
-      if (card && card.invoiceCloseDay) {
-        if (transactionDate.getDate() > card.invoiceCloseDay) {
-          const nextMonth = new Date(transactionDate)
-          nextMonth.setMonth(nextMonth.getMonth() + 1)
-          suggestedFiscalMonth = formatFiscalMonth(nextMonth)
-        }
-      }
-    }
-    // Prioridade 2: Lógica Global
-    else if (globalSettings && globalSettings.monthCloseRule) {
-      const closeDate = calculateCloseDate(
-        globalSettings.monthCloseRule,
-        transactionDate,
-      )
-      if (transactionDate > closeDate) {
-        const nextMonth = new Date(transactionDate)
-        nextMonth.setMonth(nextMonth.getMonth() + 1)
-        suggestedFiscalMonth = formatFiscalMonth(nextMonth)
-      }
-    }
-
-    // Atualiza o estado com o mês fiscal sugerido.
-    setFormData((prev) => ({ ...prev, fiscalMonth: suggestedFiscalMonth }))
-  }, [
-    formData.date,
-    formData.paymentMethod,
-    formData.cardId,
-    globalSettings,
-    creditCards,
-    isEditing,
-  ])
-
   useEffect(() => {
     if (isEditing) {
       setFormData({
@@ -85,6 +52,40 @@ export function ExpenseForm({
       })
     }
   }, [initialData, isEditing])
+
+  useEffect(() => {
+    if (isEditing) return
+    const transactionDate = new Date(formData.date + 'T12:00:00')
+    let suggestedFiscalMonth = formatFiscalMonth(transactionDate)
+    if (formData.paymentMethod === 'credit' && formData.cardId) {
+      const card = creditCards.find((c) => c.id === formData.cardId)
+      if (card && card.invoiceCloseDay) {
+        if (transactionDate.getDate() > card.invoiceCloseDay) {
+          const nextMonth = new Date(transactionDate)
+          nextMonth.setMonth(nextMonth.getMonth() + 1)
+          suggestedFiscalMonth = formatFiscalMonth(nextMonth)
+        }
+      }
+    } else if (globalSettings && globalSettings.monthCloseRule) {
+      const closeDate = calculateCloseDate(
+        globalSettings.monthCloseRule,
+        transactionDate,
+      )
+      if (transactionDate > closeDate) {
+        const nextMonth = new Date(transactionDate)
+        nextMonth.setMonth(nextMonth.getMonth() + 1)
+        suggestedFiscalMonth = formatFiscalMonth(nextMonth)
+      }
+    }
+    setFormData((prev) => ({ ...prev, fiscalMonth: suggestedFiscalMonth }))
+  }, [
+    formData.date,
+    formData.paymentMethod,
+    formData.cardId,
+    globalSettings,
+    creditCards,
+    isEditing,
+  ])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -105,20 +106,24 @@ export function ExpenseForm({
     )
     try {
       const transactionDate = new Date(formData.date + 'T12:00:00')
+      const transactionValue = parseFloat(formData.value)
 
       const dataToSave = {
         userId: user.uid,
         type: 'expense',
         description: formData.description,
-        value: parseFloat(formData.value),
+        value: transactionValue,
         date: transactionDate,
         fiscalMonth: formData.fiscalMonth,
         paymentMethod: formData.paymentMethod,
         categoryId: formData.categoryId,
         cardId: formData.paymentMethod === 'credit' ? formData.cardId : '',
+        invoiceId: null, // Será preenchido se for uma despesa de cartão
       }
 
       if (isEditing) {
+        // A lógica de edição de despesas de cartão é mais complexa e será adicionada depois.
+        // Por agora, focamos na criação.
         const docRef = doc(
           db,
           `artifacts/${appId}/users/${user.uid}/transactions`,
@@ -126,6 +131,70 @@ export function ExpenseForm({
         )
         await updateDoc(docRef, dataToSave)
         toast.success('Despesa atualizada com sucesso!', { id: loadingToast })
+      } else if (formData.paymentMethod === 'credit' && formData.cardId) {
+        // LÓGICA DE FATURA
+        const card = creditCards.find((c) => c.id === formData.cardId)
+        let invoiceMonthDate = new Date(transactionDate)
+        if (transactionDate.getDate() > card.invoiceCloseDay) {
+          invoiceMonthDate.setMonth(invoiceMonthDate.getMonth() + 1)
+        }
+        const invoiceMonthStr = formatFiscalMonth(invoiceMonthDate)
+
+        // Verifica se a fatura já existe
+        const invoiceQuery = query(
+          collection(db, `artifacts/${appId}/users/${user.uid}/invoices`),
+          where('cardId', '==', formData.cardId),
+          where('month', '==', invoiceMonthStr),
+        )
+        const querySnapshot = await getDocs(invoiceQuery)
+
+        const batch = writeBatch(db)
+        let invoiceId
+
+        if (querySnapshot.empty) {
+          // Cria uma nova fatura
+          const newInvoiceRef = doc(
+            collection(db, `artifacts/${appId}/users/${user.uid}/invoices`),
+          )
+          invoiceId = newInvoiceRef.id
+          const closeDate = new Date(
+            invoiceMonthDate.getFullYear(),
+            invoiceMonthDate.getMonth(),
+            card.invoiceCloseDay,
+          )
+          const dueDate = new Date(
+            invoiceMonthDate.getFullYear(),
+            invoiceMonthDate.getMonth(),
+            card.invoiceDueDay,
+          )
+
+          batch.set(newInvoiceRef, {
+            cardId: formData.cardId,
+            month: invoiceMonthStr,
+            total: transactionValue,
+            closeDate: closeDate,
+            dueDate: dueDate,
+            status: 'Aberta',
+            createdAt: serverTimestamp(),
+          })
+        } else {
+          // Atualiza a fatura existente
+          const invoiceDoc = querySnapshot.docs[0]
+          invoiceId = invoiceDoc.id
+          batch.update(invoiceDoc.ref, { total: increment(transactionValue) })
+        }
+
+        // Adiciona a transação com o ID da fatura
+        dataToSave.invoiceId = invoiceId
+        const newTransactionRef = doc(
+          collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
+        )
+        batch.set(newTransactionRef, dataToSave)
+
+        await batch.commit()
+        toast.success('Despesa de cartão adicionada à fatura!', {
+          id: loadingToast,
+        })
       } else {
         await addDoc(
           collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
@@ -230,7 +299,7 @@ export function ExpenseForm({
               name="cardId"
               value={formData.cardId}
               onChange={handleChange}
-              required
+              required={formData.paymentMethod === 'credit'}
             >
               <option value="" disabled>
                 Selecione um cartão

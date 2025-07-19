@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react'
 import { useAuth } from './contexts/AuthContext'
 import { useFirestoreQuery } from './hooks/useFirestoreQuery'
-import { useFirestoreDocument } from './hooks/useFirestoreDocument' // 1. Importa o novo hook
-import { collection, query, doc } from 'firebase/firestore' // Importa 'doc'
+import { useFirestoreDocument } from './hooks/useFirestoreDocument'
+import { collection, query, doc } from 'firebase/firestore'
 
 import { Sidebar } from './components/Sidebar'
 import { LoginScreen } from './components/LoginScreen'
@@ -45,8 +45,13 @@ function App() {
         : null,
     [db, appId, user],
   )
-
-  // 2. Referência para o documento de configurações globais
+  const invoicesQuery = useMemo(
+    () =>
+      user
+        ? query(collection(db, `artifacts/${appId}/users/${user.uid}/invoices`))
+        : null,
+    [db, appId, user],
+  ) // NOVO: Query para faturas
   const settingsRef = useMemo(
     () =>
       user
@@ -62,14 +67,17 @@ function App() {
     useFirestoreQuery(categoriesQuery)
   const { data: creditCards, loading: loadingCreditCards } =
     useFirestoreQuery(creditCardsQuery)
+  const { data: invoices, loading: loadingInvoices } =
+    useFirestoreQuery(invoicesQuery) // NOVO: Busca de faturas
   const { data: globalSettings, loading: loadingSettings } =
-    useFirestoreDocument(settingsRef) // 3. Busca as configurações
+    useFirestoreDocument(settingsRef)
 
   const loadingData =
     loadingTransactions ||
     loadingCategories ||
     loadingCreditCards ||
-    loadingSettings
+    loadingSettings ||
+    loadingInvoices
 
   const handleSave = () => {
     setCurrentPage('calendar')
@@ -80,7 +88,8 @@ function App() {
       transactions,
       categories,
       creditCards,
-      globalSettings, // 4. Passa as configurações para os componentes filhos
+      invoices, // NOVO: Passa as faturas para os componentes filhos
+      globalSettings,
       setCurrentPage,
       setSelectedDate,
       selectedDate,
