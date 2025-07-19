@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CreditCard } from 'lucide-react'
 import {
   getDaysInMonth,
   getFirstDayOfMonth,
@@ -41,15 +41,11 @@ export function CalendarView({
       new Date(currentYear, currentMonth, 1),
     )
 
-    // 1. Filtra transações que NÃO são de cartão de crédito ou são receitas
     const directImpactTransactions = transactions.filter((t) => !t.invoiceId)
-
-    // 2. Filtra faturas que vencem neste mês fiscal
     const dueInvoices = invoices.filter(
       (inv) => formatFiscalMonth(inv.dueDate) === fiscalMonthStr,
     )
 
-    // 3. Calcula o saldo inicial de transações que pertencem a este mês fiscal, mas ocorreram em meses anteriores.
     const initialBalance = directImpactTransactions
       .filter((t) => t.fiscalMonth < fiscalMonthStr)
       .reduce((acc, t) => {
@@ -62,7 +58,6 @@ export function CalendarView({
     const dailyData = Array.from({ length: daysInMonth }, (_, i) => {
       const day = i + 1
 
-      // Transações do dia (sem cartão)
       const dayTransactions = directImpactTransactions.filter((t) => {
         const tDate = t.date
         return (
@@ -73,6 +68,14 @@ export function CalendarView({
         )
       })
 
+      const creditCardTransactionsToday = transactions.filter(
+        (t) =>
+          t.paymentMethod === 'credit' &&
+          t.date.getDate() === day &&
+          t.date.getMonth() === currentMonth &&
+          t.date.getFullYear() === currentYear,
+      )
+
       const dayRevenues = dayTransactions
         .filter((t) => t.type === 'revenue')
         .reduce((sum, t) => sum + t.value, 0)
@@ -80,7 +83,6 @@ export function CalendarView({
         .filter((t) => t.type === 'expense')
         .reduce((sum, t) => sum + t.value, 0)
 
-      // Faturas que vencem no dia
       const invoicesDueToday = dueInvoices.filter(
         (inv) => inv.dueDate.getDate() === day,
       )
@@ -94,9 +96,9 @@ export function CalendarView({
       return {
         day,
         revenues: dayRevenues,
-        // As despesas do dia agora incluem o total das faturas
         expenses: dayExpenses + totalInvoiceExpenses,
         balance: cumulativeBalance,
+        creditCardTransactions: creditCardTransactionsToday,
       }
     })
 
@@ -142,6 +144,8 @@ export function CalendarView({
             currentYear === today.getFullYear()
 
           const dayCellClasses = `day-cell ${isToday ? 'today' : ''}`
+          const hasCreditCardTransactions =
+            data.creditCardTransactions.length > 0
 
           return (
             <div
@@ -149,7 +153,22 @@ export function CalendarView({
               className={dayCellClasses}
               onClick={() => handleDayClick(data.day)}
             >
-              <div className="day-number">{data.day}</div>
+              <div className="day-header">
+                <div className="day-number">{data.day}</div>
+                {hasCreditCardTransactions && (
+                  <div className="credit-card-icon-container">
+                    <CreditCard size={14} className="credit-card-icon" />
+                    <div className="credit-card-popover">
+                      <p className="popover-title">Compras no Cartão</p>
+                      <ul>
+                        {data.creditCardTransactions.map((t) => (
+                          <li key={t.id}>{t.description}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="day-details">
                 {data.revenues > 0 && (
                   <p className="day-revenue">R: {data.revenues.toFixed(2)}</p>

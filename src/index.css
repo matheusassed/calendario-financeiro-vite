@@ -958,3 +958,72 @@ body {
 }
 
 /* TRANSAÇÃO DA FATURA */
+
+/* POPOVER CRÉDITO */
+
+.day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  min-height: 28px;
+}
+
+.credit-card-icon-container {
+  position: relative; /* Essencial para o posicionamento do popover */
+  cursor: pointer;
+}
+
+.credit-card-icon {
+  color: #9ca3af; /* gray-400 */
+}
+
+.credit-card-popover {
+  /* Posicionamento absoluto e escondido por defeito */
+  position: absolute;
+  bottom: 120%; 
+  right: 0;
+  width: 200px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 0.75rem;
+  z-index: 10;
+  
+  /* Escondido por defeito */
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+}
+
+/* Mostra o popover ao passar o rato por cima do contentor do ícone */
+.credit-card-icon-container:hover .credit-card-popover {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.popover-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin: 0 0 0.5rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.credit-card-popover ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+.credit-card-popover li {
+  padding: 0.25rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* POPOVER CRÉDITO */
