@@ -158,14 +158,6 @@ export function CalendarView({
                 {hasCreditCardTransactions && (
                   <div className="credit-card-icon-container">
                     <CreditCard size={14} className="credit-card-icon" />
-                    <div className="credit-card-popover">
-                      <p className="popover-title">Compras no Cartão</p>
-                      <ul>
-                        {data.creditCardTransactions.map((t) => (
-                          <li key={t.id}>{t.description}</li>
-                        ))}
-                      </ul>
-                    </div>
                   </div>
                 )}
               </div>

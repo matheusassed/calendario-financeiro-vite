@@ -176,6 +176,8 @@ export function DayDetailsView({
   const getCategoryName = (id) =>
     categories.find((c) => c.id === id)?.name || 'Sem Categoria'
 
+  const currentFiscalMonth = formatFiscalMonth(selectedDate)
+
   return (
     <>
       <ConfirmModal
@@ -306,47 +308,66 @@ export function DayDetailsView({
               .length > 0 ? (
               dayData.dayTransactions
                 .filter((t) => t.type === 'expense')
-                .map((trans) => (
-                  <div
-                    key={trans.id}
-                    className={`transaction-card expense ${trans.isInvoicePayment ? 'invoice-payment' : ''}`}
-                  >
-                    <div className="transaction-info">
-                      {trans.isInvoicePayment && (
-                        <CreditCard size={16} className="invoice-icon" />
-                      )}
-                      <p className="transaction-description">
-                        {trans.description}
-                      </p>
-                      {!trans.isInvoicePayment && (
-                        <span className="transaction-category">
-                          {getCategoryName(trans.categoryId)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="transaction-info-right">
-                      <p className="transaction-value">
-                        - R$ {trans.value.toFixed(2)}
-                      </p>
-                      {!trans.isInvoicePayment && (
-                        <div className="transaction-actions">
-                          <button
-                            onClick={() => handleEditClick(trans)}
-                            title="Editar"
-                          >
-                            <FileText size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(trans)}
-                            title="Excluir"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                .map((trans) => {
+                  const isFutureFiscalMonth =
+                    trans.fiscalMonth &&
+                    trans.fiscalMonth !== currentFiscalMonth
+                  return (
+                    <div
+                      key={trans.id}
+                      className={`transaction-card expense ${trans.isInvoicePayment ? 'invoice-payment' : ''}`}
+                    >
+                      <div className="transaction-info">
+                        {trans.isInvoicePayment && (
+                          <CreditCard size={16} className="invoice-icon" />
+                        )}
+                        <p className="transaction-description">
+                          {trans.description}
+                        </p>
+                        <div className="transaction-tags">
+                          {!trans.isInvoicePayment && (
+                            <span className="transaction-category">
+                              {getCategoryName(trans.categoryId)}
+                            </span>
+                          )}
+                          {/* NOVO: Adiciona a tag de cartão de crédito */}
+                          {trans.paymentMethod === 'credit' && (
+                            <span className="credit-card-tag">
+                              <CreditCard size={12} />
+                              {getCardName(trans.cardId)}
+                            </span>
+                          )}
+                          {isFutureFiscalMonth && (
+                            <span className="future-fiscal-month-tag">
+                              Mês Fiscal: {trans.fiscalMonth}
+                            </span>
+                          )}
                         </div>
-                      )}
+                      </div>
+                      <div className="transaction-info-right">
+                        <p className="transaction-value">
+                          - R$ {trans.value.toFixed(2)}
+                        </p>
+                        {!trans.isInvoicePayment && (
+                          <div className="transaction-actions">
+                            <button
+                              onClick={() => handleEditClick(trans)}
+                              title="Editar"
+                            >
+                              <FileText size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(trans)}
+                              title="Excluir"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
             ) : (
               <p className="no-transactions">Nenhuma despesa neste dia.</p>
             )}
