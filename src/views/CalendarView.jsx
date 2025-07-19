@@ -8,6 +8,7 @@ import {
 
 export function CalendarView({
   transactions,
+  invoices,
   setCurrentPage,
   setSelectedDate,
 }) {
@@ -40,36 +41,32 @@ export function CalendarView({
       new Date(currentYear, currentMonth, 1),
     )
 
-    // 1. Obtém TODAS as transações para o mês fiscal atual.
-    const allTransactionsForFiscalMonth = transactions.filter(
-      (t) => t.fiscalMonth === fiscalMonthStr,
+    // 1. Filtra transações que NÃO são de cartão de crédito ou são receitas
+    const directImpactTransactions = transactions.filter((t) => !t.invoiceId)
+
+    // 2. Filtra faturas que vencem neste mês fiscal
+    const dueInvoices = invoices.filter(
+      (inv) => formatFiscalMonth(inv.dueDate) === fiscalMonthStr,
     )
 
-    // 2. Calcula o saldo inicial de transações que pertencem a este mês fiscal, mas ocorreram em meses anteriores.
-    const initialBalance = allTransactionsForFiscalMonth
-      .filter((t) => {
-        const tDate = t.date
-        return (
-          tDate.getFullYear() < currentYear ||
-          (tDate.getFullYear() === currentYear &&
-            tDate.getMonth() < currentMonth)
-        )
-      })
+    // 3. Calcula o saldo inicial de transações que pertencem a este mês fiscal, mas ocorreram em meses anteriores.
+    const initialBalance = directImpactTransactions
+      .filter((t) => t.fiscalMonth < fiscalMonthStr)
       .reduce((acc, t) => {
         if (t.type === 'revenue') return acc + t.value
         if (t.type === 'expense') return acc - t.value
         return acc
       }, 0)
 
-    // 3. Começa o saldo cumulativo com este valor "transportado".
     let cumulativeBalance = initialBalance
     const dailyData = Array.from({ length: daysInMonth }, (_, i) => {
       const day = i + 1
 
-      // Filtra transações que ocorreram NAQUELA DATA e pertencem a ESTE MÊS FISCAL.
-      const dayTransactions = allTransactionsForFiscalMonth.filter((t) => {
+      // Transações do dia (sem cartão)
+      const dayTransactions = directImpactTransactions.filter((t) => {
         const tDate = t.date
         return (
+          t.fiscalMonth === fiscalMonthStr &&
           tDate.getDate() === day &&
           tDate.getMonth() === currentMonth &&
           tDate.getFullYear() === currentYear
@@ -79,18 +76,26 @@ export function CalendarView({
       const dayRevenues = dayTransactions
         .filter((t) => t.type === 'revenue')
         .reduce((sum, t) => sum + t.value, 0)
-
       const dayExpenses = dayTransactions
         .filter((t) => t.type === 'expense')
         .reduce((sum, t) => sum + t.value, 0)
 
-      // O saldo acumulado é atualizado com as transações do dia.
-      cumulativeBalance += dayRevenues - dayExpenses
+      // Faturas que vencem no dia
+      const invoicesDueToday = dueInvoices.filter(
+        (inv) => inv.dueDate.getDate() === day,
+      )
+      const totalInvoiceExpenses = invoicesDueToday.reduce(
+        (sum, inv) => sum + inv.total,
+        0,
+      )
+
+      cumulativeBalance += dayRevenues - dayExpenses - totalInvoiceExpenses
 
       return {
         day,
         revenues: dayRevenues,
-        expenses: dayExpenses,
+        // As despesas do dia agora incluem o total das faturas
+        expenses: dayExpenses + totalInvoiceExpenses,
         balance: cumulativeBalance,
       }
     })
@@ -105,7 +110,7 @@ export function CalendarView({
       ),
       year: currentYear,
     }
-  }, [currentYear, currentMonth, transactions])
+  }, [currentYear, currentMonth, transactions, invoices])
 
   const blanks = Array.from({ length: monthData.firstDay })
   const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']

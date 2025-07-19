@@ -248,7 +248,7 @@ body {
 }
 
 .page-content {
-  padding: 2rem;
+  padding: 1rem;
 }
 
 /* CALENDARIO */
@@ -257,13 +257,14 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   padding: 0 1rem;
 }
 
 .calendar-title {
   font-size: 1.5rem;
   font-weight: 600;
+  margin: 0;
 }
 
 .nav-button {
@@ -275,11 +276,16 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s;
+  transition: all ease 0.2s;
+  border: 2px solid transparent;
+  background-color: #e5e7eb;
 }
 
 .nav-button:hover {
-  background-color: #e5e7eb;
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+  transition: all ease 0.2s;
 }
 
 .calendar-grid {
@@ -938,3 +944,17 @@ body {
 }
 
 /* TRANSACTION TAGS */
+
+/* TRANSAÇÃO DA FATURA */
+
+.transaction-card.invoice-payment {
+  background-color: #f1f5f9; /* Um cinzento um pouco mais escuro */
+  border-left-color: #64748b; /* Um cinzento mais forte */
+}
+
+.invoice-icon {
+  color: #64748b;
+  margin-right: 0.25rem;
+}
+
+/* TRANSAÇÃO DA FATURA */

@@ -8,6 +8,7 @@ import {
   Trash2,
   CheckCircle,
   ArrowLeft,
+  CreditCard,
 } from 'lucide-react'
 import { formatFiscalMonth } from '../utils/helpers'
 import { ConfirmModal } from '../components/ConfirmModal'
@@ -29,9 +30,11 @@ const formatDate = (date) => {
 export function DayDetailsView({
   selectedDate,
   transactions,
+  invoices,
   categories,
   creditCards,
   setCurrentPage,
+  globalSettings,
 }) {
   const { db, user, appId } = useAuth()
 
@@ -40,6 +43,9 @@ export function DayDetailsView({
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [transactionToEdit, setTransactionToEdit] = useState(null)
+
+  const getCardName = (id) =>
+    creditCards.find((c) => c.id === id)?.name || 'Cartão desconhecido'
 
   const dayData = useMemo(() => {
     if (!selectedDate) {
@@ -51,7 +57,7 @@ export function DayDetailsView({
       }
     }
 
-    const dayTransactions = transactions.filter((t) => {
+    const realDayTransactions = transactions.filter((t) => {
       const tDate = t.date
       return (
         tDate.getDate() === selectedDate.getDate() &&
@@ -59,30 +65,61 @@ export function DayDetailsView({
         tDate.getFullYear() === selectedDate.getFullYear()
       )
     })
+
+    const dueInvoicesToday = invoices.filter((inv) => {
+      const dueDate = inv.dueDate
+      return (
+        dueDate.getDate() === selectedDate.getDate() &&
+        dueDate.getMonth() === selectedDate.getMonth() &&
+        dueDate.getFullYear() === selectedDate.getFullYear()
+      )
+    })
+
+    const invoiceTransactions = dueInvoicesToday.map((inv) => ({
+      id: `invoice_${inv.id}`,
+      type: 'expense',
+      description: `Pagamento Fatura - ${getCardName(inv.cardId)}`,
+      value: inv.total,
+      isInvoicePayment: true,
+    }))
+
+    const dayTransactions = [...realDayTransactions, ...invoiceTransactions]
+
     const dailyRevenues = dayTransactions
       .filter((t) => t.type === 'revenue')
       .reduce((sum, t) => sum + t.value, 0)
     const dailyExpenses = dayTransactions
       .filter((t) => t.type === 'expense')
       .reduce((sum, t) => sum + t.value, 0)
+
     const targetDateEnd = new Date(selectedDate)
     targetDateEnd.setHours(23, 59, 59, 999)
     const fiscalMonthStr = formatFiscalMonth(selectedDate)
-    const cumulativeBalance = transactions
-      .filter((t) => {
-        const tDate = t.date
-        return (
+    const directImpactTransactions = transactions.filter((t) => !t.invoiceId)
+    const balanceFromTransactions = directImpactTransactions
+      .filter(
+        (t) =>
           t.fiscalMonth === fiscalMonthStr &&
-          tDate.getTime() <= targetDateEnd.getTime()
-        )
-      })
+          t.date.getTime() <= targetDateEnd.getTime(),
+      )
       .reduce((acc, t) => {
         if (t.type === 'revenue') return acc + t.value
         if (t.type === 'expense') return acc - t.value
         return acc
       }, 0)
+    const dueInvoicesForBalance = invoices.filter(
+      (inv) =>
+        formatFiscalMonth(inv.dueDate) === fiscalMonthStr &&
+        inv.dueDate.getTime() <= targetDateEnd.getTime(),
+    )
+    const balanceFromInvoices = dueInvoicesForBalance.reduce(
+      (sum, inv) => sum + inv.total,
+      0,
+    )
+    const cumulativeBalance = balanceFromTransactions - balanceFromInvoices
+
     return { dayTransactions, dailyRevenues, dailyExpenses, cumulativeBalance }
-  }, [selectedDate, transactions])
+  }, [selectedDate, transactions, invoices, creditCards])
 
   if (!selectedDate) {
     return (
@@ -107,7 +144,7 @@ export function DayDetailsView({
   const confirmDelete = async () => {
     if (!transactionToDelete) return
 
-    const loadingToast = toast.loading('Excluindo transação...')
+    const loadingToast = toast.loading('A excluir transação...')
     try {
       await deleteDoc(
         doc(
@@ -139,8 +176,6 @@ export function DayDetailsView({
   const getCategoryName = (id) =>
     categories.find((c) => c.id === id)?.name || 'Sem Categoria'
 
-  const currentFiscalMonth = formatFiscalMonth(selectedDate)
-
   return (
     <>
       <ConfirmModal
@@ -150,7 +185,7 @@ export function DayDetailsView({
         title="Confirmar Exclusão"
       >
         <p>
-          Tem certeza que deseja excluir a transação "
+          Tem a certeza que deseja excluir a transação "
           {transactionToDelete?.description}"?
         </p>
         <p>Esta ação não pode ser desfeita.</p>
@@ -172,6 +207,8 @@ export function DayDetailsView({
             onCancel={() => setIsEditModalOpen(false)}
             categories={categories}
             creditCards={creditCards}
+            invoices={invoices}
+            globalSettings={globalSettings}
           />
         )}
         {transactionToEdit?.type === 'revenue' && (
@@ -179,6 +216,7 @@ export function DayDetailsView({
             initialData={transactionToEdit}
             onSave={handleSaveEdit}
             onCancel={() => setIsEditModalOpen(false)}
+            globalSettings={globalSettings}
           />
         )}
       </Modal>
@@ -227,43 +265,34 @@ export function DayDetailsView({
               .length > 0 ? (
               dayData.dayTransactions
                 .filter((t) => t.type === 'revenue')
-                .map((trans) => {
-                  const isFutureFiscalMonth =
-                    trans.fiscalMonth !== currentFiscalMonth
-                  return (
-                    <div key={trans.id} className="transaction-card revenue">
-                      <div className="transaction-info">
-                        <p className="transaction-description">
-                          {trans.description}
-                        </p>
-                        {isFutureFiscalMonth && (
-                          <span className="future-fiscal-month-tag">
-                            Mês Fiscal: {trans.fiscalMonth}
-                          </span>
-                        )}
-                      </div>
-                      <div className="transaction-info-right">
-                        <p className="transaction-value">
-                          + R$ {trans.value.toFixed(2)}
-                        </p>
-                        <div className="transaction-actions">
-                          <button
-                            onClick={() => handleEditClick(trans)}
-                            title="Editar"
-                          >
-                            <FileText size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(trans)}
-                            title="Excluir"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
+                .map((trans) => (
+                  <div key={trans.id} className="transaction-card revenue">
+                    <div className="transaction-info">
+                      <p className="transaction-description">
+                        {trans.description}
+                      </p>
+                    </div>
+                    <div className="transaction-info-right">
+                      <p className="transaction-value">
+                        + R$ {trans.value.toFixed(2)}
+                      </p>
+                      <div className="transaction-actions">
+                        <button
+                          onClick={() => handleEditClick(trans)}
+                          title="Editar"
+                        >
+                          <FileText size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(trans)}
+                          title="Excluir"
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </div>
                     </div>
-                  )
-                })
+                  </div>
+                ))
             ) : (
               <p className="no-transactions">Nenhuma receita neste dia.</p>
             )}
@@ -277,33 +306,29 @@ export function DayDetailsView({
               .length > 0 ? (
               dayData.dayTransactions
                 .filter((t) => t.type === 'expense')
-                .map((trans) => {
-                  const isFutureFiscalMonth =
-                    trans.fiscalMonth !== currentFiscalMonth
-                  return (
-                    <div key={trans.id} className="transaction-card expense">
-                      <div className="transaction-info">
-                        <p className="transaction-description">
-                          {trans.description}
-                        </p>
-                        <div className="transaction-tags">
-                          <span className="transaction-category">
-                            {getCategoryName(trans.categoryId)}
-                          </span>
-                          {isFutureFiscalMonth && (
-                            <span className="future-fiscal-month-tag">
-                              {new Date(trans.fiscalMonth + '-01').toLocaleDateString('pt-BR', {
-                                month: 'long',
-                                timeZone: 'UTC',
-                              })}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="transaction-info-right">
-                        <p className="transaction-value">
-                          - R$ {trans.value.toFixed(2)}
-                        </p>
+                .map((trans) => (
+                  <div
+                    key={trans.id}
+                    className={`transaction-card expense ${trans.isInvoicePayment ? 'invoice-payment' : ''}`}
+                  >
+                    <div className="transaction-info">
+                      {trans.isInvoicePayment && (
+                        <CreditCard size={16} className="invoice-icon" />
+                      )}
+                      <p className="transaction-description">
+                        {trans.description}
+                      </p>
+                      {!trans.isInvoicePayment && (
+                        <span className="transaction-category">
+                          {getCategoryName(trans.categoryId)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="transaction-info-right">
+                      <p className="transaction-value">
+                        - R$ {trans.value.toFixed(2)}
+                      </p>
+                      {!trans.isInvoicePayment && (
                         <div className="transaction-actions">
                           <button
                             onClick={() => handleEditClick(trans)}
@@ -318,10 +343,10 @@ export function DayDetailsView({
                             <Trash2 size={18} />
                           </button>
                         </div>
-                      </div>
+                      )}
                     </div>
-                  )
-                })
+                  </div>
+                ))
             ) : (
               <p className="no-transactions">Nenhuma despesa neste dia.</p>
             )}
