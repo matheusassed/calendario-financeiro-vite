@@ -339,7 +339,14 @@ export function DayDetailsView({
                           )}
                           {isFutureFiscalMonth && (
                             <span className="future-fiscal-month-tag">
-                              Mês Fiscal: {trans.fiscalMonth}
+                              {(() => {
+                                const [ano, mes] = trans.fiscalMonth.split('-')
+                                const nomeMes = new Date(
+                                  ano,
+                                  mes - 1,
+                                ).toLocaleString('pt-BR', { month: 'long' })
+                                return `${nomeMes}`
+                              })()}
                             </span>
                           )}
                         </div>

@@ -42,19 +42,28 @@ export function CalendarView({
     )
 
     const directImpactTransactions = transactions.filter((t) => !t.invoiceId)
+
     const dueInvoices = invoices.filter(
       (inv) => formatFiscalMonth(inv.dueDate) === fiscalMonthStr,
     )
 
-    const initialBalance = directImpactTransactions
-      .filter((t) => t.fiscalMonth < fiscalMonthStr)
+    const initialBalanceFromTransactions = directImpactTransactions
+      .filter((t) => {
+        const tDate = t.date
+        return (
+          t.fiscalMonth === fiscalMonthStr &&
+          (tDate.getFullYear() < currentYear ||
+            (tDate.getFullYear() === currentYear &&
+              tDate.getMonth() < currentMonth))
+        )
+      })
       .reduce((acc, t) => {
         if (t.type === 'revenue') return acc + t.value
         if (t.type === 'expense') return acc - t.value
         return acc
       }, 0)
 
-    let cumulativeBalance = initialBalance
+    let cumulativeBalance = initialBalanceFromTransactions
     const dailyData = Array.from({ length: daysInMonth }, (_, i) => {
       const day = i + 1
 
