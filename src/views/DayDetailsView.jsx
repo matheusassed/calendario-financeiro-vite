@@ -42,6 +42,7 @@ export function DayDetailsView({
   handleNextDay,
   handlePrevDay,
   globalSettings,
+  setSelectedInvoiceId,
 }) {
   const { db, user, appId } = useAuth()
 
@@ -50,6 +51,12 @@ export function DayDetailsView({
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [transactionToEdit, setTransactionToEdit] = useState(null)
+
+  const handleInvoiceClick = (invoiceId) => {
+    setSelectedInvoiceId(invoiceId.replace('invoice_', '')); // Remove o prefixo para obter o ID real
+    setCurrentPage('invoiceDetails');
+  };
+
 
   const handleGoToToday = useCallback(() => {
     setSelectedDate(new Date())
@@ -384,7 +391,8 @@ export function DayDetailsView({
                   return (
                     <div
                       key={trans.id}
-                      className={`transaction-card expense ${trans.isInvoicePayment ? 'invoice-payment' : ''}`}
+                      className={`transaction-card expense ${trans.isInvoicePayment ? 'invoice-payment clickable' : ''}`}
+                      onClick={() => !!trans.isInvoicePayment && handleInvoiceClick(trans.id)}
                     >
                       <div className="transaction-info">
                         {trans.isInvoicePayment && (
@@ -399,7 +407,6 @@ export function DayDetailsView({
                               {getCategoryName(trans.categoryId)}
                             </span>
                           )}
-                          {/* NOVO: Adiciona a tag de cartão de crédito */}
                           {trans.paymentMethod === 'credit' && (
                             <span className="credit-card-tag">
                               <CreditCard size={12} />

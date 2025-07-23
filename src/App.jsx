@@ -11,12 +11,14 @@ import { ExpenseForm } from './views/ExpenseForm'
 import { RevenueForm } from './views/RevenueForm'
 import { SettingsView } from './views/SettingsView'
 import { DayDetailsView } from './views/DayDetailsView'
+import { InvoiceDetailsView } from './views/InvoiceDetailsView' // 1. Importa a nova tela
 
 function App() {
   const { user, loadingAuth, db, appId } = useAuth()
   const [currentPage, setCurrentPage] = useState('calendar')
   const [selectedDate, setSelectedDate] = useState(null)
   const [calendarDate, setCalendarDate] = useState(new Date())
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState(null) // 2. Novo estado para a fatura
 
   // --- Funções de Navegação de Dia ---
   const handleNextDay = () => {
@@ -115,6 +117,8 @@ function App() {
       setCalendarDate,
       handleNextDay,
       handlePrevDay,
+      selectedInvoiceId,
+      setSelectedInvoiceId,
     }
 
     if (loadingData && !loadingAuth) {
@@ -149,6 +153,8 @@ function App() {
         return <SettingsView {...props} />
       case 'dayDetails':
         return <DayDetailsView {...props} />
+      case 'invoiceDetails':
+        return <InvoiceDetailsView {...props} />
       default:
         return <CalendarView {...props} />
     }

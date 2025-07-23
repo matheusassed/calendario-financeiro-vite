@@ -1123,3 +1123,87 @@ body {
 }
 
 /* DAY ACTIONS */
+
+/* FATURA */
+
+.invoice-summary-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-bottom: 2rem;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.summary-icon {
+  color: var(--primary-color);
+  background-color: #e0e7ff;
+  padding: 0.75rem;
+  border-radius: 50%;
+}
+
+.summary-item div {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-item span {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.summary-item strong {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.invoice-transactions-list {
+  background-color: white;
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+}
+
+.invoice-transaction-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.invoice-transaction-item:last-child {
+  border-bottom: none;
+}
+
+.transaction-date {
+  font-size: 0.875rem;
+  color: #6b7280;
+  min-width: 90px;
+}
+
+/* Torna o card da fatura clicável */
+.transaction-card.clickable {
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+}
+
+.transaction-card.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #c7d2fe;
+}
+
+/* FATURA */
