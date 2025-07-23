@@ -22,16 +22,21 @@ export function ExpenseForm({
   creditCards,
   initialData,
   globalSettings,
+  selectedDate,
 }) {
   const { db, user, appId } = useAuth()
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: initialData?.date
+      ? new Date(initialData.date).toISOString().split('T')[0]
+      : selectedDate
+      ? selectedDate.toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0],
     description: '',
     value: '',
     paymentMethod: 'cash',
     categoryId: '',
     cardId: '',
-    fiscalMonth: formatFiscalMonth(new Date()),
+    fiscalMonth: formatFiscalMonth(selectedDate || new Date()),
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)

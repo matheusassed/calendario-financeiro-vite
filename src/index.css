@@ -1072,7 +1072,7 @@ body {
 }
 
 .details-header .back-button,
-.details-header .details-title{
+.details-header .details-title {
   margin: 0;
 }
 
@@ -1083,3 +1083,43 @@ body {
 }
 
 /* HEADER DETALHE DO DIA */
+
+/* DAY ACTIONS */
+
+.day-actions {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.day-actions button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-action-expense {
+  background-color: #dc2626; /* red-600 */
+}
+.btn-action-expense:hover {
+  background-color: #b91c1c; /* red-700 */
+}
+
+.btn-action-revenue {
+  background-color: #16a34a; /* green-600 */
+}
+.btn-action-revenue:hover {
+  background-color: #15803d; /* green-700 */
+}
+
+/* DAY ACTIONS */

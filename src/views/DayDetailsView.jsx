@@ -9,6 +9,7 @@ import {
   CheckCircle,
   ArrowLeft,
   CreditCard,
+  Plus,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -68,7 +69,6 @@ export function DayDetailsView({
         handleGoToToday()
       }
     }
-
     window.addEventListener('keydown', handleKeyDown)
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
@@ -308,6 +308,23 @@ export function DayDetailsView({
             <span>Saldo Acumulado</span>
             <strong>R$ {dayData.cumulativeBalance.toFixed(2)}</strong>
           </div>
+        </div>
+
+        <div className="day-actions">
+          <button
+            onClick={() => setCurrentPage('addExpense')}
+            className="btn-action-expense"
+          >
+            <MinusCircle size={20} />
+            <span>Adicionar Despesa</span>
+          </button>
+          <button
+            onClick={() => setCurrentPage('addRevenue')}
+            className="btn-action-revenue"
+          >
+            <Plus size={20} />
+            <span>Adicionar Receita</span>
+          </button>
         </div>
 
         <div className="transactions-list">
