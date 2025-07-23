@@ -1207,3 +1207,35 @@ body {
 }
 
 /* FATURA */
+
+/* VIEW SWITCH */
+
+.view-mode-switch {
+  display: flex;
+  background-color: #e5e7eb;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.view-mode-switch button {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border: none;
+  background-color: transparent;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4b5563;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.view-mode-switch button.active {
+  background-color: white;
+  color: var(--primary-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* VIEW SWITCH */

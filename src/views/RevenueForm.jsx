@@ -4,14 +4,20 @@ import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
 import { formatFiscalMonth, calculateCloseDate } from '../utils/helpers'
 import toast from 'react-hot-toast'
 
-export function RevenueForm({ onSave, onCancel, initialData, globalSettings, selectedDate }) {
+export function RevenueForm({
+  onSave,
+  onCancel,
+  initialData,
+  globalSettings,
+  selectedDate,
+}) {
   const { db, user, appId } = useAuth()
   const [formData, setFormData] = useState({
     date: initialData?.date
       ? new Date(initialData.date).toISOString().split('T')[0]
       : selectedDate
-      ? selectedDate.toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0],
+        ? selectedDate.toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0],
     description: '',
     value: '',
     fiscalMonth: formatFiscalMonth(selectedDate || new Date()),

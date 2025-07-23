@@ -1,4 +1,4 @@
-import { CalendarClock } from 'lucide-react';
+import { CalendarClock } from 'lucide-react'
 
 export function TodayButton({ onClick }) {
   return (
@@ -6,5 +6,5 @@ export function TodayButton({ onClick }) {
       <CalendarClock size={20} />
       <span>Hoje</span>
     </button>
-  );
+  )
 }

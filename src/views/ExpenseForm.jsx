@@ -29,8 +29,8 @@ export function ExpenseForm({
     date: initialData?.date
       ? new Date(initialData.date).toISOString().split('T')[0]
       : selectedDate
-      ? selectedDate.toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0],
+        ? selectedDate.toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0],
     description: '',
     value: '',
     paymentMethod: 'cash',
