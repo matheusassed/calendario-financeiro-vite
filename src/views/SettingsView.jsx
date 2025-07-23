@@ -9,7 +9,7 @@ export function SettingsView({ categories, creditCards }) {
       <div className="settings-container">
         <CategoryManagement categories={categories} />
         <CreditCardManagement creditCards={creditCards} />
-        <GlobalSettings/>
+        <GlobalSettings />
       </div>
     </div>
   )
