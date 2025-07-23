@@ -17,6 +17,8 @@ function App() {
   const [currentPage, setCurrentPage] = useState('calendar')
   const [selectedDate, setSelectedDate] = useState(null)
 
+  const [calendarDate, setCalendarDate] = useState(new Date())
+
   // --- Queries para o Firestore ---
   const transactionsQuery = useMemo(
     () =>
@@ -51,7 +53,7 @@ function App() {
         ? query(collection(db, `artifacts/${appId}/users/${user.uid}/invoices`))
         : null,
     [db, appId, user],
-  ) // NOVO: Query para faturas
+  )
   const settingsRef = useMemo(
     () =>
       user
@@ -68,7 +70,7 @@ function App() {
   const { data: creditCards, loading: loadingCreditCards } =
     useFirestoreQuery(creditCardsQuery)
   const { data: invoices, loading: loadingInvoices } =
-    useFirestoreQuery(invoicesQuery) // NOVO: Busca de faturas
+    useFirestoreQuery(invoicesQuery)
   const { data: globalSettings, loading: loadingSettings } =
     useFirestoreDocument(settingsRef)
 
@@ -88,11 +90,13 @@ function App() {
       transactions,
       categories,
       creditCards,
-      invoices, // NOVO: Passa as faturas para os componentes filhos
+      invoices,
       globalSettings,
       setCurrentPage,
       setSelectedDate,
       selectedDate,
+      calendarDate,
+      setCalendarDate,
     }
 
     if (loadingData && !loadingAuth) {

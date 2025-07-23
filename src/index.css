@@ -990,3 +990,39 @@ body {
 }
 
 /* POPOVER CRÉDITO */
+
+/* HEADER CALENDARIO */
+
+.calendar-header {
+  /* Altera para alinhar o título à direita */
+  justify-content: space-between;
+  flex-direction: row-reverse;
+}
+
+.calendar-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.today-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #fff;
+  border: 1px solid var(--border-color);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.today-button:hover {
+  background-color: #f9fafb;
+}
+
+/* HEADER CALENDARIO */

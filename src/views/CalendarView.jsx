@@ -1,31 +1,53 @@
-import React, { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, CreditCard } from 'lucide-react'
+import React, { useMemo, useEffect, useCallback } from 'react'
 import {
   getDaysInMonth,
   getFirstDayOfMonth,
   formatFiscalMonth,
 } from '../utils/helpers'
+import { TodayButton } from '../components/TodayButton'
 
 export function CalendarView({
   transactions,
   invoices,
   setCurrentPage,
   setSelectedDate,
+  calendarDate,
+  setCalendarDate,
 }) {
-  const [currentDate, setCurrentDate] = useState(new Date())
-
   const today = new Date()
 
-  const currentYear = currentDate.getFullYear()
-  const currentMonth = currentDate.getMonth()
+  const currentYear = calendarDate.getFullYear()
+  const currentMonth = calendarDate.getMonth()
 
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(currentYear, currentMonth - 1, 1))
+  const handlePrevMonth = useCallback(() => {
+    setCalendarDate(new Date(currentYear, currentMonth - 1, 1))
+  }, [currentYear, currentMonth, setCalendarDate])
+
+  const handleNextMonth = useCallback(() => {
+    setCalendarDate(new Date(currentYear, currentMonth + 1, 1))
+  }, [currentYear, currentMonth, setCalendarDate])
+
+  const handleGoToToday = () => {
+    setCalendarDate(new Date())
   }
 
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(currentYear, currentMonth + 1, 1))
-  }
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'PageUp') {
+        e.preventDefault()
+        handlePrevMonth()
+      } else if (e.key === 'PageDown') {
+        e.preventDefault()
+        handleNextMonth()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handlePrevMonth, handleNextMonth])
 
   const handleDayClick = (day) => {
     const clickedDate = new Date(currentYear, currentMonth, day)
@@ -34,19 +56,16 @@ export function CalendarView({
   }
 
   const monthData = useMemo(() => {
+    // ... (toda a lógica de cálculo do useMemo permanece exatamente a mesma)
     const daysInMonth = getDaysInMonth(currentYear, currentMonth)
     const firstDay = getFirstDayOfMonth(currentYear, currentMonth)
-
     const fiscalMonthStr = formatFiscalMonth(
       new Date(currentYear, currentMonth, 1),
     )
-
     const directImpactTransactions = transactions.filter((t) => !t.invoiceId)
-
     const dueInvoices = invoices.filter(
       (inv) => formatFiscalMonth(inv.dueDate) === fiscalMonthStr,
     )
-
     const initialBalanceFromTransactions = directImpactTransactions
       .filter((t) => {
         const tDate = t.date
@@ -66,7 +85,6 @@ export function CalendarView({
     let cumulativeBalance = initialBalanceFromTransactions
     const dailyData = Array.from({ length: daysInMonth }, (_, i) => {
       const day = i + 1
-
       const dayTransactions = directImpactTransactions.filter((t) => {
         const tDate = t.date
         return (
@@ -76,7 +94,6 @@ export function CalendarView({
           tDate.getFullYear() === currentYear
         )
       })
-
       const creditCardTransactionsToday = transactions.filter(
         (t) =>
           t.paymentMethod === 'credit' &&
@@ -84,14 +101,12 @@ export function CalendarView({
           t.date.getMonth() === currentMonth &&
           t.date.getFullYear() === currentYear,
       )
-
       const dayRevenues = dayTransactions
         .filter((t) => t.type === 'revenue')
         .reduce((sum, t) => sum + t.value, 0)
       const dayExpenses = dayTransactions
         .filter((t) => t.type === 'expense')
         .reduce((sum, t) => sum + t.value, 0)
-
       const invoicesDueToday = dueInvoices.filter(
         (inv) => inv.dueDate.getDate() === day,
       )
@@ -99,9 +114,7 @@ export function CalendarView({
         (sum, inv) => sum + inv.total,
         0,
       )
-
       cumulativeBalance += dayRevenues - dayExpenses - totalInvoiceExpenses
-
       return {
         day,
         revenues: dayRevenues,
@@ -110,7 +123,6 @@ export function CalendarView({
         creditCardTransactions: creditCardTransactionsToday,
       }
     })
-
     return {
       daysInMonth,
       firstDay,
@@ -129,13 +141,16 @@ export function CalendarView({
   return (
     <div className="page-content">
       <div className="calendar-header">
-        <button onClick={handlePrevMonth} className="nav-button">
-          <ChevronLeft />
-        </button>
+        <div className="calendar-nav-group">
+          <button onClick={handlePrevMonth} className="nav-button">
+            <ChevronLeft />
+          </button>
+          <button onClick={handleNextMonth} className="nav-button">
+            <ChevronRight />
+          </button>
+          <TodayButton onClick={handleGoToToday} />
+        </div>
         <h2 className="calendar-title">{`${monthData.monthName} de ${monthData.year}`}</h2>
-        <button onClick={handleNextMonth} className="nav-button">
-          <ChevronRight />
-        </button>
       </div>
       <div className="calendar-grid">
         {weekDays.map((day) => (
