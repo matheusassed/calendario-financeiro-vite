@@ -16,8 +16,24 @@ function App() {
   const { user, loadingAuth, db, appId } = useAuth()
   const [currentPage, setCurrentPage] = useState('calendar')
   const [selectedDate, setSelectedDate] = useState(null)
-
   const [calendarDate, setCalendarDate] = useState(new Date())
+
+  // --- Funções de Navegação de Dia ---
+  const handleNextDay = () => {
+    if (selectedDate) {
+      const nextDay = new Date(selectedDate)
+      nextDay.setDate(nextDay.getDate() + 1)
+      setSelectedDate(nextDay)
+    }
+  }
+
+  const handlePrevDay = () => {
+    if (selectedDate) {
+      const prevDay = new Date(selectedDate)
+      prevDay.setDate(prevDay.getDate() - 1)
+      setSelectedDate(prevDay)
+    }
+  }
 
   // --- Queries para o Firestore ---
   const transactionsQuery = useMemo(
@@ -97,6 +113,8 @@ function App() {
       selectedDate,
       calendarDate,
       setCalendarDate,
+      handleNextDay,
+      handlePrevDay,
     }
 
     if (loadingData && !loadingAuth) {

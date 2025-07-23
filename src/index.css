@@ -1026,3 +1026,60 @@ body {
 }
 
 /* HEADER CALENDARIO */
+
+/* HEADER DETALHE DO DIA */
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 0 1rem;
+  flex-direction: row-reverse;
+}
+
+.calendar-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.today-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #fff;
+  border: 1px solid var(--border-color);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.today-button:hover {
+  background-color: #f9fafb;
+}
+
+.details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.details-header .back-button,
+.details-header .details-title{
+  margin: 0;
+}
+
+.details-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* HEADER DETALHE DO DIA */

@@ -28,9 +28,9 @@ export function CalendarView({
     setCalendarDate(new Date(currentYear, currentMonth + 1, 1))
   }, [currentYear, currentMonth, setCalendarDate])
 
-  const handleGoToToday = () => {
+  const handleGoToToday = useCallback(() => {
     setCalendarDate(new Date())
-  }
+  }, [setCalendarDate])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -40,6 +40,9 @@ export function CalendarView({
       } else if (e.key === 'PageDown') {
         e.preventDefault()
         handleNextMonth()
+      } else if (e.key === 'Home'){
+        e.preventDefault()
+        handleGoToToday()
       }
     }
 
@@ -47,7 +50,7 @@ export function CalendarView({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [handlePrevMonth, handleNextMonth])
+  }, [handlePrevMonth, handleNextMonth, handleGoToToday])
 
   const handleDayClick = (day) => {
     const clickedDate = new Date(currentYear, currentMonth, day)

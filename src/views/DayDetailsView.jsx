@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { doc, deleteDoc } from 'firebase/firestore'
 import toast from 'react-hot-toast'
@@ -9,12 +9,15 @@ import {
   CheckCircle,
   ArrowLeft,
   CreditCard,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { formatFiscalMonth } from '../utils/helpers'
 import { ConfirmModal } from '../components/ConfirmModal'
 import { Modal } from '../components/Modal'
 import { ExpenseForm } from './ExpenseForm'
 import { RevenueForm } from './RevenueForm'
+import { TodayButton } from '../components/TodayButton'
 
 const formatDate = (date) => {
   if (!date) return ''
@@ -34,6 +37,9 @@ export function DayDetailsView({
   categories,
   creditCards,
   setCurrentPage,
+  setSelectedDate,
+  handleNextDay,
+  handlePrevDay,
   globalSettings,
 }) {
   const { db, user, appId } = useAuth()
@@ -44,8 +50,35 @@ export function DayDetailsView({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [transactionToEdit, setTransactionToEdit] = useState(null)
 
-  const getCardName = (id) =>
-    creditCards.find((c) => c.id === id)?.name || 'Cartão desconhecido'
+  const handleGoToToday = useCallback(() => {
+    setSelectedDate(new Date())
+  }, [setSelectedDate])
+
+  // Efeito para a navegação por teclado
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'PageUp') {
+        e.preventDefault()
+        handlePrevDay()
+      } else if (e.key === 'PageDown') {
+        e.preventDefault()
+        handleNextDay()
+      } else if (e.key === 'Home'){
+        e.preventDefault()
+        handleGoToToday()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handlePrevDay, handleNextDay, handleGoToToday])
+
+  const getCardName = useCallback(
+    (id) => creditCards.find((c) => c.id === id)?.name || 'Cartão desconhecido',
+    [creditCards]
+  )
 
   const dayData = useMemo(() => {
     if (!selectedDate) {
@@ -119,7 +152,7 @@ export function DayDetailsView({
     const cumulativeBalance = balanceFromTransactions - balanceFromInvoices
 
     return { dayTransactions, dailyRevenues, dailyExpenses, cumulativeBalance }
-  }, [selectedDate, transactions, invoices, creditCards])
+  }, [selectedDate, transactions, invoices, getCardName])
 
   if (!selectedDate) {
     return (
@@ -224,14 +257,33 @@ export function DayDetailsView({
       </Modal>
 
       <div className="page-content">
-        <button
-          onClick={() => setCurrentPage('calendar')}
-          className="back-button"
-        >
-          <ArrowLeft size={20} />
-          <span>Voltar ao Calendário</span>
-        </button>
-        <h1 className="details-title">{formatDate(selectedDate)}</h1>
+        <div className="details-header">
+          <button
+            onClick={() => setCurrentPage('calendar')}
+            className="back-button"
+          >
+            <ArrowLeft size={20} />
+            <span>Voltar ao Calendário</span>
+          </button>
+          <h1 className="details-title">{formatDate(selectedDate)}</h1>
+          <div className="details-nav-group">
+            <button
+              onClick={handlePrevDay}
+              className="nav-button"
+              title="Dia Anterior (Page Up)"
+            >
+              <ChevronLeft />
+            </button>
+            <button
+              onClick={handleNextDay}
+              className="nav-button"
+              title="Próximo Dia (Page Down)"
+            >
+              <ChevronRight />
+            </button>
+            <TodayButton onClick={handleGoToToday} />
+          </div>
+        </div>
 
         <div className="details-summary-card">
           <div>
