@@ -1,6 +1,15 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { doc, deleteDoc } from 'firebase/firestore'
+// ATUALIZAR IMPORTS DO FIRESTORE
+import {
+  doc,
+  deleteDoc,
+  query,
+  collection,
+  where,
+  getDocs,
+  writeBatch,
+} from 'firebase/firestore'
 import toast from 'react-hot-toast'
 import {
   MinusCircle,
@@ -12,6 +21,7 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
+  Repeat, // IMPORTAR ÍCONE
 } from 'lucide-react'
 import { formatFiscalMonth } from '../utils/helpers'
 import { ConfirmModal } from '../components/ConfirmModal'
@@ -19,6 +29,7 @@ import { Modal } from '../components/Modal'
 import { ExpenseForm } from './ExpenseForm'
 import { RevenueForm } from './RevenueForm'
 import { TodayButton } from '../components/TodayButton'
+import { RecurrenceActionModal } from '../components/RecurrenceActionModal' // IMPORTAR NOVO MODAL
 
 const formatDate = (date) => {
   if (!date) return ''
@@ -44,12 +55,15 @@ export function DayDetailsView({
   globalSettings,
   setSelectedInvoiceId,
   viewMode,
+  isRecurrenceModalOpen,
+  setIsRecurrenceModalOpen,
 }) {
   const { db, user, appId } = useAuth()
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [transactionToDelete, setTransactionToDelete] = useState(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [transactionToEdit, setTransactionToEdit] = useState(null)
+  const [actionType, setActionType] = useState('delete')
 
   const handleInvoiceClick = (invoiceId) => {
     setSelectedInvoiceId(invoiceId.replace('invoice_', ''))
@@ -190,9 +204,16 @@ export function DayDetailsView({
   }
 
   const handleDeleteClick = (transaction) => {
-    setTransactionToDelete(transaction)
-    setIsDeleteModalOpen(true)
+    if (transaction.isRecurring) {
+      setTransactionToDelete(transaction)
+      setActionType('delete')
+      setIsRecurrenceModalOpen(true)
+    } else {
+      setTransactionToDelete(transaction)
+      setIsDeleteModalOpen(true)
+    }
   }
+
   const confirmDelete = async () => {
     if (!transactionToDelete) return
 
@@ -214,10 +235,78 @@ export function DayDetailsView({
       setTransactionToDelete(null)
     }
   }
+
   const handleEditClick = (transaction) => {
-    setTransactionToEdit(transaction)
-    setIsEditModalOpen(true)
+    if (transaction.isRecurring) {
+      setTransactionToEdit(transaction)
+      setActionType('edit')
+      setIsRecurrenceModalOpen(true)
+    } else {
+      setTransactionToEdit(transaction)
+      setIsEditModalOpen(true)
+    }
   }
+
+  // NOVA FUNÇÃO para lidar com ações recorrentes
+  const handleRecurrenceAction = async (scope) => {
+    const targetTransaction =
+      actionType === 'delete' ? transactionToDelete : transactionToEdit
+    if (!targetTransaction) return
+
+    setIsRecurrenceModalOpen(false)
+
+    // A lógica de edição será implementada depois (Fase 2.3 do plano)
+    if (actionType === 'edit') {
+      toast.error('A edição em série ainda não foi implementada.', {
+        duration: 4000,
+      })
+      setIsEditModalOpen(true) // Abre o editor para "Apenas esta" por enquanto
+      return
+    }
+
+    const loadingToast = toast.loading(`A excluir transações (${scope})...`)
+    try {
+      const batch = writeBatch(db)
+      const transRef = collection(
+        db,
+        `artifacts/${appId}/users/${user.uid}/transactions`,
+      )
+
+      if (scope === 'one') {
+        const docRef = doc(transRef, targetTransaction.id)
+        batch.delete(docRef)
+      } else {
+        const q = query(
+          transRef,
+          where('recurrenceId', '==', targetTransaction.recurrenceId),
+        )
+        const querySnapshot = await getDocs(q)
+
+        querySnapshot.forEach((document) => {
+          if (scope === 'all') {
+            batch.delete(document.ref)
+          } else if (scope === 'future') {
+            if (
+              document.data().recurrenceIndex >=
+              targetTransaction.recurrenceIndex
+            ) {
+              batch.delete(document.ref)
+            }
+          }
+        })
+      }
+
+      await batch.commit()
+      toast.success('Transações recorrentes excluídas!', { id: loadingToast })
+    } catch (error) {
+      console.error('Erro ao processar série recorrente:', error)
+      toast.error('Ocorreu um erro.', { id: loadingToast })
+    } finally {
+      setTransactionToDelete(null)
+      setTransactionToEdit(null)
+    }
+  }
+
   const handleSaveEdit = () => {
     setIsEditModalOpen(false)
     setTransactionToEdit(null)
@@ -269,6 +358,14 @@ export function DayDetailsView({
           />
         )}
       </Modal>
+      {/* NOVO MODAL DE AÇÃO RECORRENTE */}
+      <RecurrenceActionModal
+        isOpen={isRecurrenceModalOpen}
+        onClose={() => setIsRecurrenceModalOpen(false)}
+        onConfirm={handleRecurrenceAction}
+        actionType={actionType}
+      />
+
       <div className="page-content">
         <div className="details-header">
           <button
@@ -403,6 +500,9 @@ export function DayDetailsView({
                           <CreditCard size={16} className="invoice-icon" />
                         )}
                         <p className="transaction-description">
+                          {trans.isRecurring && (
+                            <Repeat size={14} className="recurring-icon" />
+                          )}
                           {trans.description}
                         </p>
                         <div className="transaction-tags">

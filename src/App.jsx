@@ -20,6 +20,7 @@ function App() {
   const [calendarDate, setCalendarDate] = useState(new Date())
   const [viewMode, setViewMode] = useState('fiscal')
   const [selectedInvoiceId, setSelectedInvoiceId] = useState(null)
+  const [isRecurrenceModalOpen, setIsRecurrenceModalOpen] = useState(false)
 
   // --- Funções de Navegação de Dia ---
   const handleNextDay = () => {
@@ -122,6 +123,8 @@ function App() {
       setSelectedInvoiceId,
       viewMode,
       setViewMode,
+      isRecurrenceModalOpen,
+      setIsRecurrenceModalOpen,
     }
 
     if (loadingData && !loadingAuth) {
