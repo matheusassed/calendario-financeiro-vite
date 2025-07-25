@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
+import {
+  addDoc,
+  collection,
+  doc,
+  updateDoc,
+  writeBatch,
+} from 'firebase/firestore'
 import { formatFiscalMonth, calculateCloseDate } from '../utils/helpers'
+import { generateRecurrenceSeries } from '../utils/recurrence'
 import toast from 'react-hot-toast'
+import { RecurrenceFieldset } from '../components/RecurrenceFieldset'
 
 export function RevenueForm({
   onSave,
@@ -24,8 +32,16 @@ export function RevenueForm({
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-
   const isEditing = !!initialData
+
+  // --- NOVOS ESTADOS PARA RECORRÊNCIA ---
+  const [isRecurring, setIsRecurring] = useState(false)
+  const [recurrenceRule, setRecurrenceRule] = useState({
+    type: 'monthly',
+    interval: 1,
+    endDate: '',
+  })
+  // --- FIM DOS NOVOS ESTADOS ---
 
   // Lógica para sugerir o Mês Fiscal
   useEffect(() => {
@@ -76,12 +92,16 @@ export function RevenueForm({
     setLoading(true)
 
     const loadingToast = toast.loading(
-      isEditing ? 'Atualizando receita...' : 'Salvando receita...',
+      isEditing
+        ? 'Atualizando receita...'
+        : isRecurring
+          ? 'Salvando série recorrente...'
+          : 'Salvando receita...',
     )
     try {
       const transactionDate = new Date(formData.date + 'T12:00:00')
 
-      const dataToSave = {
+      const baseData = {
         userId: user.uid,
         type: 'revenue',
         description: formData.description,
@@ -90,18 +110,47 @@ export function RevenueForm({
         fiscalMonth: formData.fiscalMonth,
       }
 
-      if (isEditing) {
+      // --- LÓGICA DE RECORRÊNCIA ---
+      if (!isEditing && isRecurring) {
+        const batch = writeBatch(db)
+        const recurrenceId = doc(collection(db, 'idGenerator')).id // Gera um ID único para a série
+        const seriesData = {
+          ...baseData,
+          isRecurring: true,
+          recurrenceId,
+          recurrenceRule,
+        }
+
+        const transactionsToCreate = generateRecurrenceSeries(seriesData)
+
+        if (transactionsToCreate.length === 0) {
+          throw new Error('Nenhuma transação gerada para a série recorrente.')
+        }
+
+        transactionsToCreate.forEach((trans) => {
+          const docRef = doc(
+            collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
+          )
+          batch.set(docRef, trans)
+        })
+
+        await batch.commit()
+        toast.success(
+          `${transactionsToCreate.length} receitas recorrentes criadas!`,
+          { id: loadingToast },
+        )
+      } else if (isEditing) {
         const docRef = doc(
           db,
           `artifacts/${appId}/users/${user.uid}/transactions`,
           initialData.id,
         )
-        await updateDoc(docRef, dataToSave)
+        await updateDoc(docRef, baseData)
         toast.success('Receita atualizada com sucesso!', { id: loadingToast })
       } else {
         await addDoc(
           collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
-          dataToSave,
+          baseData,
         )
         toast.success('Receita adicionada com sucesso!', { id: loadingToast })
       }
@@ -159,6 +208,27 @@ export function RevenueForm({
             />
           </div>
         </div>
+
+        {!isEditing && (
+          <div className="form-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={isRecurring}
+                onChange={(e) => setIsRecurring(e.target.checked)}
+              />
+              É uma receita recorrente?
+            </label>
+          </div>
+        )}
+
+        {/* --- FORMULÁRIO DE RECORRÊNCIA --- */}
+        {isRecurring && !isEditing && (
+          <RecurrenceFieldset
+            recurrenceRule={recurrenceRule}
+            setRecurrenceRule={setRecurrenceRule}
+          />
+        )}
 
         <div className="form-group">
           <label htmlFor="fiscalMonth">Mês Fiscal</label>
