@@ -43,23 +43,26 @@ export function DayDetailsView({
   handlePrevDay,
   globalSettings,
   setSelectedInvoiceId,
-  viewMode,
 }) {
   const { db, user, appId } = useAuth()
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [transactionToDelete, setTransactionToDelete] = useState(null)
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [transactionToEdit, setTransactionToEdit] = useState(null)
 
   const handleInvoiceClick = (invoiceId) => {
-    setSelectedInvoiceId(invoiceId.replace('invoice_', ''))
-    setCurrentPage('invoiceDetails')
-  }
+    setSelectedInvoiceId(invoiceId.replace('invoice_', '')); // Remove o prefixo para obter o ID real
+    setCurrentPage('invoiceDetails');
+  };
+
 
   const handleGoToToday = useCallback(() => {
     setSelectedDate(new Date())
   }, [setSelectedDate])
 
+  // Efeito para a navegação por teclado
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'PageUp') {
@@ -68,7 +71,7 @@ export function DayDetailsView({
       } else if (e.key === 'PageDown') {
         e.preventDefault()
         handleNextDay()
-      } else if (e.key === 'Home') {
+      } else if (e.key === 'Home'){
         e.preventDefault()
         handleGoToToday()
       }
@@ -81,7 +84,7 @@ export function DayDetailsView({
 
   const getCardName = useCallback(
     (id) => creditCards.find((c) => c.id === id)?.name || 'Cartão desconhecido',
-    [creditCards],
+    [creditCards]
   )
 
   const dayData = useMemo(() => {
@@ -102,6 +105,7 @@ export function DayDetailsView({
         tDate.getFullYear() === selectedDate.getFullYear()
       )
     })
+
     const dueInvoicesToday = invoices.filter((inv) => {
       const dueDate = inv.dueDate
       return (
@@ -110,6 +114,7 @@ export function DayDetailsView({
         dueDate.getFullYear() === selectedDate.getFullYear()
       )
     })
+
     const invoiceTransactions = dueInvoicesToday.map((inv) => ({
       id: `invoice_${inv.id}`,
       type: 'expense',
@@ -117,62 +122,44 @@ export function DayDetailsView({
       value: inv.total,
       isInvoicePayment: true,
     }))
+
     const dayTransactions = [...realDayTransactions, ...invoiceTransactions]
+
     const dailyRevenues = dayTransactions
       .filter((t) => t.type === 'revenue')
       .reduce((sum, t) => sum + t.value, 0)
     const dailyExpenses = dayTransactions
-      .filter((t) => t.type === 'expense' && t.paymentMethod !== 'credit')
+      .filter((t) => t.type === 'expense')
       .reduce((sum, t) => sum + t.value, 0)
 
-    let cumulativeBalance = 0
     const targetDateEnd = new Date(selectedDate)
     targetDateEnd.setHours(23, 59, 59, 999)
-
-    if (viewMode === 'fiscal') {
-      const fiscalMonthStr = formatFiscalMonth(selectedDate)
-      const directImpactTransactions = transactions.filter((t) => !t.invoiceId)
-      const balanceFromTransactions = directImpactTransactions
-        .filter(
-          (t) =>
-            t.fiscalMonth === fiscalMonthStr &&
-            t.date.getTime() <= targetDateEnd.getTime(),
-        )
-        .reduce((acc, t) => {
-          if (t.type === 'revenue') return acc + t.value
-          if (t.type === 'expense') return acc - t.value
-          return acc
-        }, 0)
-      const dueInvoicesForBalance = invoices.filter(
-        (inv) =>
-          formatFiscalMonth(inv.dueDate) === fiscalMonthStr &&
-          inv.dueDate.getTime() <= targetDateEnd.getTime(),
+    const fiscalMonthStr = formatFiscalMonth(selectedDate)
+    const directImpactTransactions = transactions.filter((t) => !t.invoiceId)
+    const balanceFromTransactions = directImpactTransactions
+      .filter(
+        (t) =>
+          t.fiscalMonth === fiscalMonthStr &&
+          t.date.getTime() <= targetDateEnd.getTime(),
       )
-      const balanceFromInvoices = dueInvoicesForBalance.reduce(
-        (sum, inv) => sum + inv.total,
-        0,
-      )
-      cumulativeBalance = balanceFromTransactions - balanceFromInvoices
-    } else {
-      // viewMode === 'cashflow'
-      const directImpactTransactions = transactions.filter(
-        (t) => t.paymentMethod !== 'credit',
-      )
-      const balanceFromTransactions = directImpactTransactions
-        .filter((t) => t.date.getTime() <= targetDateEnd.getTime())
-        .reduce((acc, t) => {
-          if (t.type === 'revenue') return acc + t.value
-          if (t.type === 'expense') return acc - t.value
-          return acc
-        }, 0)
-      const balanceFromInvoices = invoices
-        .filter((inv) => inv.dueDate.getTime() <= targetDateEnd.getTime())
-        .reduce((sum, inv) => sum + inv.total, 0)
-      cumulativeBalance = balanceFromTransactions - balanceFromInvoices
-    }
+      .reduce((acc, t) => {
+        if (t.type === 'revenue') return acc + t.value
+        if (t.type === 'expense') return acc - t.value
+        return acc
+      }, 0)
+    const dueInvoicesForBalance = invoices.filter(
+      (inv) =>
+        formatFiscalMonth(inv.dueDate) === fiscalMonthStr &&
+        inv.dueDate.getTime() <= targetDateEnd.getTime(),
+    )
+    const balanceFromInvoices = dueInvoicesForBalance.reduce(
+      (sum, inv) => sum + inv.total,
+      0,
+    )
+    const cumulativeBalance = balanceFromTransactions - balanceFromInvoices
 
     return { dayTransactions, dailyRevenues, dailyExpenses, cumulativeBalance }
-  }, [selectedDate, transactions, invoices, getCardName, viewMode])
+  }, [selectedDate, transactions, invoices, getCardName])
 
   if (!selectedDate) {
     return (
@@ -193,6 +180,7 @@ export function DayDetailsView({
     setTransactionToDelete(transaction)
     setIsDeleteModalOpen(true)
   }
+
   const confirmDelete = async () => {
     if (!transactionToDelete) return
 
@@ -214,16 +202,20 @@ export function DayDetailsView({
       setTransactionToDelete(null)
     }
   }
+
   const handleEditClick = (transaction) => {
     setTransactionToEdit(transaction)
     setIsEditModalOpen(true)
   }
+
   const handleSaveEdit = () => {
     setIsEditModalOpen(false)
     setTransactionToEdit(null)
   }
+
   const getCategoryName = (id) =>
     categories.find((c) => c.id === id)?.name || 'Sem Categoria'
+
   const currentFiscalMonth = formatFiscalMonth(selectedDate)
 
   return (
@@ -240,6 +232,7 @@ export function DayDetailsView({
         </p>
         <p>Esta ação não pode ser desfeita.</p>
       </ConfirmModal>
+
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
@@ -269,6 +262,7 @@ export function DayDetailsView({
           />
         )}
       </Modal>
+
       <div className="page-content">
         <div className="details-header">
           <button
@@ -297,6 +291,7 @@ export function DayDetailsView({
             <TodayButton onClick={handleGoToToday} />
           </div>
         </div>
+
         <div className="details-summary-card">
           <div>
             <span>Receitas do Dia</span>
@@ -321,6 +316,7 @@ export function DayDetailsView({
             <strong>R$ {dayData.cumulativeBalance.toFixed(2)}</strong>
           </div>
         </div>
+
         <div className="day-actions">
           <button
             onClick={() => setCurrentPage('addExpense')}
@@ -337,6 +333,7 @@ export function DayDetailsView({
             <span>Adicionar Receita</span>
           </button>
         </div>
+
         <div className="transactions-list">
           <div className="transaction-section">
             <h2 className="section-title">
@@ -378,6 +375,7 @@ export function DayDetailsView({
               <p className="no-transactions">Nenhuma receita neste dia.</p>
             )}
           </div>
+
           <div className="transaction-section">
             <h2 className="section-title">
               <MinusCircle size={22} /> Despesas
@@ -394,9 +392,7 @@ export function DayDetailsView({
                     <div
                       key={trans.id}
                       className={`transaction-card expense ${trans.isInvoicePayment ? 'invoice-payment clickable' : ''}`}
-                      onClick={() =>
-                        !!trans.isInvoicePayment && handleInvoiceClick(trans.id)
-                      }
+                      onClick={() => !!trans.isInvoicePayment && handleInvoiceClick(trans.id)}
                     >
                       <div className="transaction-info">
                         {trans.isInvoicePayment && (
