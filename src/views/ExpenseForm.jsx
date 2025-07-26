@@ -13,9 +13,7 @@ import {
   increment,
 } from 'firebase/firestore'
 import { formatFiscalMonth, calculateCloseDate } from '../utils/helpers'
-import { generateRecurrenceSeries } from '../utils/recurrence'
 import toast from 'react-hot-toast'
-import { RecurrenceFieldset } from '../components/RecurrenceFieldset'
 
 export function ExpenseForm({
   onSave,
@@ -42,15 +40,6 @@ export function ExpenseForm({
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-
-  // --- NOVOS ESTADOS PARA RECORRÊNCIA ---
-  const [isRecurring, setIsRecurring] = useState(false)
-  const [recurrenceRule, setRecurrenceRule] = useState({
-    type: 'monthly',
-    interval: 1,
-    endDate: '',
-  })
-  // --- FIM DOS NOVOS ESTADOS ---
 
   const isEditing = !!initialData
 
@@ -118,17 +107,13 @@ export function ExpenseForm({
     setLoading(true)
 
     const loadingToast = toast.loading(
-      isEditing
-        ? 'Atualizando despesa...'
-        : isRecurring
-          ? 'Salvando série recorrente...'
-          : 'Salvando despesa...',
+      isEditing ? 'Atualizando despesa...' : 'Salvando despesa...',
     )
     try {
       const transactionDate = new Date(formData.date + 'T12:00:00')
       const transactionValue = parseFloat(formData.value)
 
-      const baseData = {
+      const dataToSave = {
         userId: user.uid,
         type: 'expense',
         description: formData.description,
@@ -138,46 +123,18 @@ export function ExpenseForm({
         paymentMethod: formData.paymentMethod,
         categoryId: formData.categoryId,
         cardId: formData.paymentMethod === 'credit' ? formData.cardId : '',
-        invoiceId: null,
+        invoiceId: null, // Será preenchido se for uma despesa de cartão
       }
 
-      // --- LÓGICA DE RECORRÊNCIA ---
-      if (!isEditing && isRecurring) {
-        const batch = writeBatch(db)
-        const recurrenceId = doc(collection(db, 'idGenerator')).id // Gera um ID único para a série
-        const seriesData = {
-          ...baseData,
-          isRecurring: true,
-          recurrenceId,
-          recurrenceRule,
-        }
-
-        const transactionsToCreate = generateRecurrenceSeries(seriesData)
-
-        if (transactionsToCreate.length === 0) {
-          throw new Error('Nenhuma transação gerada para a série recorrente.')
-        }
-
-        transactionsToCreate.forEach((trans) => {
-          const docRef = doc(
-            collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
-          )
-          batch.set(docRef, trans)
-        })
-
-        await batch.commit()
-        toast.success(
-          `${transactionsToCreate.length} despesas recorrentes criadas!`,
-          { id: loadingToast },
-        )
-      } else if (isEditing) {
-        // A lógica de edição de despesas recorrentes é mais complexa e será adicionada depois.
+      if (isEditing) {
+        // A lógica de edição de despesas de cartão é mais complexa e será adicionada depois.
+        // Por agora, focamos na criação.
         const docRef = doc(
           db,
           `artifacts/${appId}/users/${user.uid}/transactions`,
           initialData.id,
         )
-        await updateDoc(docRef, baseData)
+        await updateDoc(docRef, dataToSave)
         toast.success('Despesa atualizada com sucesso!', { id: loadingToast })
       } else if (formData.paymentMethod === 'credit' && formData.cardId) {
         // LÓGICA DE FATURA
@@ -233,11 +190,11 @@ export function ExpenseForm({
         }
 
         // Adiciona a transação com o ID da fatura
-        baseData.invoiceId = invoiceId
+        dataToSave.invoiceId = invoiceId
         const newTransactionRef = doc(
           collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
         )
-        batch.set(newTransactionRef, baseData)
+        batch.set(newTransactionRef, dataToSave)
 
         await batch.commit()
         toast.success('Despesa de cartão adicionada à fatura!', {
@@ -246,7 +203,7 @@ export function ExpenseForm({
       } else {
         await addDoc(
           collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
-          baseData,
+          dataToSave,
         )
         toast.success('Despesa adicionada com sucesso!', { id: loadingToast })
       }
@@ -305,27 +262,6 @@ export function ExpenseForm({
           </div>
         </div>
 
-        {!isEditing && (
-          <div className="form-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={isRecurring}
-                onChange={(e) => setIsRecurring(e.target.checked)}
-              />
-              É uma despesa recorrente?
-            </label>
-          </div>
-        )}
-
-        {/* --- FORMULÁRIO DE RECORRÊNCIA --- */}
-        {isRecurring && !isEditing && (
-          <RecurrenceFieldset
-            recurrenceRule={recurrenceRule}
-            setRecurrenceRule={setRecurrenceRule}
-          />
-        )}
-
         <div className="form-group">
           <label htmlFor="categoryId">Categoria</label>
           <select
@@ -354,8 +290,8 @@ export function ExpenseForm({
             value={formData.paymentMethod}
             onChange={handleChange}
           >
-            <option value="debit">Débito</option>
             <option value="cash">Dinheiro</option>
+            <option value="debit">Débito</option>
             <option value="credit">Crédito</option>
           </select>
         </div>
