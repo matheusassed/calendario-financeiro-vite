@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import {
   collection,
@@ -14,6 +14,13 @@ import {
 } from 'firebase/firestore'
 import { formatFiscalMonth, calculateCloseDate } from '../utils/helpers'
 import toast from 'react-hot-toast'
+import { RecurrenceConfig } from '../components/RecurrenceConfig'
+import {
+  generateRecurrenceDates,
+  generateRecurrenceId,
+  createRecurrenceInstance,
+} from '../utils/recurrence'
+import { validateRecurrenceRule } from '../utils/recurrence'
 
 export function ExpenseForm({
   onSave,
@@ -40,6 +47,8 @@ export function ExpenseForm({
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [recurrenceRule, setRecurrenceRule] = useState(null)
+  const [recurrenceLoading, setRecurrenceLoading] = useState(false)
 
   const isEditing = !!initialData
 
@@ -92,6 +101,10 @@ export function ExpenseForm({
     isEditing,
   ])
 
+  const handleRecurrenceChange = useCallback((rule) => {
+    setRecurrenceRule(rule)
+  }, [])
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
@@ -126,7 +139,41 @@ export function ExpenseForm({
         invoiceId: null, // Será preenchido se for uma despesa de cartão
       }
 
-      if (isEditing) {
+      if (recurrenceRule && !isEditing) {
+        setRecurrenceLoading(true)
+        // Criar série recorrente
+        const validation = validateRecurrenceRule(recurrenceRule)
+        if (!validation.isValid) {
+          setError(
+            `Regra de recorrência inválida: ${validation.errors.join(', ')}`,
+          )
+          return
+        }
+        const recurrenceId = generateRecurrenceId()
+        const dates = generateRecurrenceDates(transactionDate, recurrenceRule)
+
+        // Criar todas as instâncias
+        const batch = writeBatch(db)
+
+        dates.forEach((date, index) => {
+          const instanceData = createRecurrenceInstance(
+            dataToSave,
+            recurrenceRule,
+            date,
+            index,
+            recurrenceId,
+          )
+
+          const docRef = doc(
+            collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
+          )
+          batch.set(docRef, instanceData)
+        })
+
+        await batch.commit()
+        setRecurrenceLoading(false)
+        toast.success(`${dates.length} transações recorrentes criadas!`)
+      } else if (isEditing) {
         // A lógica de edição de despesas de cartão é mais complexa e será adicionada depois.
         // Por agora, focamos na criação.
         const docRef = doc(
@@ -329,6 +376,11 @@ export function ExpenseForm({
             required
           />
         </div>
+        <RecurrenceConfig
+          onRuleChange={handleRecurrenceChange}
+          startDate={new Date(formData.date + 'T12:00:00')}
+          disabled={isEditing && initialData?.isRecurring}
+        />
 
         <div className="form-actions">
           <button
@@ -339,7 +391,7 @@ export function ExpenseForm({
           >
             Cancelar
           </button>
-          <button type="submit" className="btn-primary" disabled={loading}>
+          <button type="submit" className="btn-primary" disabled={loading || recurrenceLoading}>
             {loading
               ? 'Salvando...'
               : isEditing

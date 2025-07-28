@@ -62,7 +62,5 @@ export const calculateCloseDate = (settings, referenceDate) => {
     return date
   }
 
-  // Adicionar outras lógicas como 'first_business_day' aqui no futuro
-
   return new Date(year, month, 25) // Fallback
 }

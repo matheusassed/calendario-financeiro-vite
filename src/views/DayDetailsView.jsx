@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { doc, deleteDoc } from 'firebase/firestore'
+import { doc, deleteDoc, writeBatch } from 'firebase/firestore'
 import toast from 'react-hot-toast'
 import {
   MinusCircle,
@@ -19,6 +19,11 @@ import { Modal } from '../components/Modal'
 import { ExpenseForm } from './ExpenseForm'
 import { RevenueForm } from './RevenueForm'
 import { TodayButton } from '../components/TodayButton'
+import { RecurrenceEditModal } from '../components/RecurrenceEditModal'
+import {
+  isRecurringTransaction,
+  getAffectedInstances,
+} from '../utils/recurrence'
 
 const formatDate = (date) => {
   if (!date) return ''
@@ -50,6 +55,9 @@ export function DayDetailsView({
   const [transactionToDelete, setTransactionToDelete] = useState(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [transactionToEdit, setTransactionToEdit] = useState(null)
+  const [isRecurrenceEditModalOpen, setIsRecurrenceEditModalOpen] =
+    useState(false)
+  const [recurrenceOperation, setRecurrenceOperation] = useState('edit')
 
   const handleInvoiceClick = (invoiceId) => {
     setSelectedInvoiceId(invoiceId.replace('invoice_', ''))
@@ -190,9 +198,17 @@ export function DayDetailsView({
   }
 
   const handleDeleteClick = (transaction) => {
-    setTransactionToDelete(transaction)
-    setIsDeleteModalOpen(true)
+    if (isRecurringTransaction(transaction)) {
+      setTransactionToDelete(transaction)
+      setRecurrenceOperation('delete')
+      setIsRecurrenceEditModalOpen(true)
+    } else {
+      // Lógica normal
+      setTransactionToDelete(transaction)
+      setIsDeleteModalOpen(true)
+    }
   }
+
   const confirmDelete = async () => {
     if (!transactionToDelete) return
 
@@ -214,18 +230,69 @@ export function DayDetailsView({
       setTransactionToDelete(null)
     }
   }
+
   const handleEditClick = (transaction) => {
-    setTransactionToEdit(transaction)
-    setIsEditModalOpen(true)
+    if (isRecurringTransaction(transaction)) {
+      setTransactionToEdit(transaction)
+      setRecurrenceOperation('edit')
+      setIsRecurrenceEditModalOpen(true)
+    } else {
+      // Lógica normal
+      setTransactionToEdit(transaction)
+      setIsEditModalOpen(true)
+    }
   }
+
   const handleSaveEdit = () => {
     setIsEditModalOpen(false)
     setTransactionToEdit(null)
   }
+
   const getCategoryName = (id) =>
     categories.find((c) => c.id === id)?.name || 'Sem Categoria'
   const currentFiscalMonth = formatFiscalMonth(selectedDate)
 
+  const handleRecurrenceConfirm = async (editOption) => {
+    const transaction =
+      recurrenceOperation === 'edit' ? transactionToEdit : transactionToDelete
+    const affectedIds = getAffectedInstances(
+      transaction,
+      editOption,
+      transactions,
+    )
+
+    if (recurrenceOperation === 'edit') {
+      // Implementar edição em lote
+      // TODO: Será implementado na FASE 2
+      setIsRecurrenceEditModalOpen(false)
+      setIsEditModalOpen(true) // Por enquanto, abre modal normal
+    } else {
+      // Implementar exclusão em lote
+      const loadingToast = toast.loading('Excluindo transações...')
+      try {
+        const batch = writeBatch(db)
+        affectedIds.forEach((id) => {
+          const docRef = doc(
+            db,
+            `artifacts/${appId}/users/${user.uid}/transactions`,
+            id,
+          )
+          batch.delete(docRef)
+        })
+        await batch.commit()
+        toast.success(`${affectedIds.length} transações excluídas!`, {
+          id: loadingToast,
+        })
+      } catch (error) {
+        toast.error('Erro ao excluir transações', { id: loadingToast })
+        console.error('Erro ao excluir transações:', error)
+      }
+    }
+
+    setIsRecurrenceEditModalOpen(false)
+    setTransactionToEdit(null)
+    setTransactionToDelete(null)
+  }
   return (
     <>
       <ConfirmModal
@@ -269,6 +336,17 @@ export function DayDetailsView({
           />
         )}
       </Modal>
+      <RecurrenceEditModal
+        isOpen={isRecurrenceEditModalOpen}
+        onClose={() => setIsRecurrenceEditModalOpen(false)}
+        onConfirm={handleRecurrenceConfirm}
+        transaction={
+          recurrenceOperation === 'edit'
+            ? transactionToEdit
+            : transactionToDelete
+        }
+        operation={recurrenceOperation}
+      />
       <div className="page-content">
         <div className="details-header">
           <button

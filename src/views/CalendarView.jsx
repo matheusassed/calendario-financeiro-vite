@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, CreditCard } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CreditCard, RefreshCw } from 'lucide-react'
 import React, { useMemo, useEffect, useCallback } from 'react'
 import {
   getDaysInMonth,
@@ -140,7 +140,7 @@ export function CalendarView({
       const directImpactTransactions = transactions.filter(
         (t) => t.paymentMethod !== 'credit',
       )
-      
+
       const initialBalanceFromTransactions = directImpactTransactions
         .filter((t) => t.date < startOfMonth)
         .reduce((acc, t) => {
@@ -247,6 +247,9 @@ export function CalendarView({
           const dayCellClasses = `day-cell ${isToday ? 'today' : ''}`
           const hasCreditCardTransactions =
             data.creditCardTransactions.length > 0
+          const hasRecurringTransactions = data.dayTransactions?.some(
+            (t) => t.isRecurring,
+          )
           return (
             <div
               key={data.day}
@@ -255,11 +258,14 @@ export function CalendarView({
             >
               <div className="day-header">
                 <div className="day-number">{data.day}</div>
-                {hasCreditCardTransactions && (
-                  <div className="credit-card-icon-container">
+                <div className="credit-card-icon-container">
+                  {hasCreditCardTransactions && (
                     <CreditCard size={14} className="credit-card-icon" />
-                  </div>
-                )}
+                  )}
+                  {hasRecurringTransactions && (
+                    <RefreshCw size={12} className="recurring-icon" />
+                  )}
+                </div>
               </div>
               <div className="day-details">
                 {data.revenues > 0 && (
