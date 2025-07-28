@@ -215,9 +215,13 @@ export const createRecurrenceInstance = (
   index,
   recurrenceId
 ) => {
+  // Criar uma cópia limpa dos dados base, removendo campos que não devem ser duplicados
+  const { id, ...cleanBaseTransaction } = baseTransaction
+
+  console.log('Criando instância de recorrência:', id)
+
   return {
-    ...baseTransaction,
-    id: undefined, // Será gerado pelo Firestore
+    ...cleanBaseTransaction,
     date: instanceDate,
     recurrenceId,
     recurrenceIndex: index,
