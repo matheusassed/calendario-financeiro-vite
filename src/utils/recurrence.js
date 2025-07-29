@@ -215,10 +215,11 @@ export const createRecurrenceInstance = (
   index,
   recurrenceId
 ) => {
-  // Criar uma cópia limpa dos dados base, removendo campos que não devem ser duplicados
   const { id, ...cleanBaseTransaction } = baseTransaction
 
-  console.log('Criando instância de recorrência:', id)
+  if (id){
+    console.log('Criando instância de recorrência:', id)
+  }
 
   return {
     ...cleanBaseTransaction,
@@ -227,8 +228,8 @@ export const createRecurrenceInstance = (
     recurrenceIndex: index,
     recurrenceRule: rule,
     isRecurring: true,
-    // Recalcular o mês fiscal baseado na nova data
-    fiscalMonth: formatFiscalMonth(instanceDate)
+    fiscalMonth: formatFiscalMonth(instanceDate),
+    createdAt: new Date()
   }
 }
 
