@@ -174,8 +174,10 @@ export function ExpenseForm({
         setRecurrenceLoading(false)
         toast.success(`${dates.length} transações recorrentes criadas!`)
       } else if (isEditing) {
-        // A lógica de edição de despesas de cartão é mais complexa e será adicionada depois.
-        // Por agora, focamos na criação.
+        if (onSave) {
+          onSave(dataToSave)
+          return
+        }
         const docRef = doc(
           db,
           `artifacts/${appId}/users/${user.uid}/transactions`,

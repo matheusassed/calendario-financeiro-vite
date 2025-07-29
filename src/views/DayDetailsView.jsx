@@ -20,9 +20,12 @@ import { ExpenseForm } from './ExpenseForm'
 import { RevenueForm } from './RevenueForm'
 import { TodayButton } from '../components/TodayButton'
 import { RecurrenceEditModal } from '../components/RecurrenceEditModal'
+import { RecurrenceEditOptions } from '../components/RecurrenceEditOptions'
 import {
   isRecurringTransaction,
   getAffectedInstances,
+  updateRecurringSeries,
+  breakRecurrenceSeries,
 } from '../utils/recurrence'
 
 const formatDate = (date) => {
@@ -58,6 +61,9 @@ export function DayDetailsView({
   const [isRecurrenceEditModalOpen, setIsRecurrenceEditModalOpen] =
     useState(false)
   const [recurrenceOperation, setRecurrenceOperation] = useState('edit')
+  const [isRecurrenceOptionsModalOpen, setIsRecurrenceOptionsModalOpen] =
+    useState(false)
+  const [pendingEditData, setPendingEditData] = useState(null)
 
   const handleInvoiceClick = (invoiceId) => {
     setSelectedInvoiceId(invoiceId.replace('invoice_', ''))
@@ -243,9 +249,17 @@ export function DayDetailsView({
     }
   }
 
-  const handleSaveEdit = () => {
-    setIsEditModalOpen(false)
-    setTransactionToEdit(null)
+  const handleSaveEdit = (editedData) => {
+    if (isRecurringTransaction(transactionToEdit)) {
+      // Para transações recorrentes, armazenar dados e mostrar opções
+      setPendingEditData(editedData)
+      setIsEditModalOpen(false)
+      setIsRecurrenceOptionsModalOpen(true)
+    } else {
+      // Para transações normais, salvar diretamente
+      setIsEditModalOpen(false)
+      setTransactionToEdit(null)
+    }
   }
 
   const getCategoryName = (id) =>
@@ -262,12 +276,11 @@ export function DayDetailsView({
     )
 
     if (recurrenceOperation === 'edit') {
-      // Implementar edição em lote
-      // TODO: Será implementado na FASE 2
+      // Para edição, abrir modal de opções
       setIsRecurrenceEditModalOpen(false)
-      setIsEditModalOpen(true) // Por enquanto, abre modal normal
+      setIsRecurrenceOptionsModalOpen(true)
     } else {
-      // Implementar exclusão em lote
+      // Lógica de exclusão (manter como está)
       const loadingToast = toast.loading('Excluindo transações...')
       try {
         const batch = writeBatch(db)
@@ -285,14 +298,58 @@ export function DayDetailsView({
         })
       } catch (error) {
         toast.error('Erro ao excluir transações', { id: loadingToast })
-        console.error('Erro ao excluir transações:', error)
+        console.log('Erro ao excluir transações:', error)
       }
-    }
 
-    setIsRecurrenceEditModalOpen(false)
-    setTransactionToEdit(null)
-    setTransactionToDelete(null)
+      setIsRecurrenceEditModalOpen(false)
+      setTransactionToEdit(null)
+      setTransactionToDelete(null)
+    }
   }
+
+  const handleEditOptionsConfirm = async (editOption, isAdvanced) => {
+    if (!transactionToEdit || !pendingEditData) return
+
+    const loadingToast = toast.loading('Atualizando transações...')
+
+    try {
+      const collectionPath = `artifacts/${appId}/users/${user.uid}/transactions`
+      let updatedCount = 0
+
+      if (isAdvanced && editOption !== EDIT_OPTIONS.ALL) {
+        // Usar função avançada que pode quebrar séries
+        updatedCount = await breakRecurrenceSeries(
+          transactionToEdit,
+          pendingEditData,
+          editOption,
+          transactions,
+          db,
+          collectionPath,
+        )
+      } else {
+        // Usar função padrão para atualização simples
+        updatedCount = await updateRecurringSeries(
+          pendingEditData,
+          editOption,
+          transactions,
+          db,
+          collectionPath,
+        )
+      }
+
+      toast.success(`${updatedCount} transações atualizadas!`, {
+        id: loadingToast,
+      })
+    } catch (error) {
+      console.error('Erro ao atualizar série:', error)
+      toast.error('Erro ao atualizar transações', { id: loadingToast })
+    } finally {
+      setIsRecurrenceOptionsModalOpen(false)
+      setTransactionToEdit(null)
+      setPendingEditData(null)
+    }
+  }
+
   return (
     <>
       <ConfirmModal
@@ -319,7 +376,7 @@ export function DayDetailsView({
         {transactionToEdit?.type === 'expense' && (
           <ExpenseForm
             initialData={transactionToEdit}
-            onSave={handleSaveEdit}
+            onSave={(data) => handleSaveEdit(data)} // Modificar esta linha
             onCancel={() => setIsEditModalOpen(false)}
             categories={categories}
             creditCards={creditCards}
@@ -330,7 +387,7 @@ export function DayDetailsView({
         {transactionToEdit?.type === 'revenue' && (
           <RevenueForm
             initialData={transactionToEdit}
-            onSave={handleSaveEdit}
+            onSave={(data) => handleSaveEdit(data)} // Modificar esta linha
             onCancel={() => setIsEditModalOpen(false)}
             globalSettings={globalSettings}
           />
@@ -346,6 +403,15 @@ export function DayDetailsView({
             : transactionToDelete
         }
         operation={recurrenceOperation}
+      />
+      <RecurrenceEditOptions
+        isOpen={isRecurrenceOptionsModalOpen}
+        onClose={() => {
+          setIsRecurrenceOptionsModalOpen(false)
+          setPendingEditData(null)
+        }}
+        onConfirm={handleEditOptionsConfirm}
+        transaction={transactionToEdit}
       />
       <div className="page-content">
         <div className="details-header">

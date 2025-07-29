@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /**
  * Utilitários para gerenciamento de transações recorrentes
  */
@@ -217,10 +218,6 @@ export const createRecurrenceInstance = (
 ) => {
   const { id, ...cleanBaseTransaction } = baseTransaction
 
-  if (id){
-    console.log('Criando instância de recorrência:', id)
-  }
-
   return {
     ...cleanBaseTransaction,
     date: instanceDate,
@@ -228,7 +225,9 @@ export const createRecurrenceInstance = (
     recurrenceIndex: index,
     recurrenceRule: rule,
     isRecurring: true,
+    // Recalcular o mês fiscal baseado na nova data
     fiscalMonth: formatFiscalMonth(instanceDate),
+    // Adicionar timestamp de criação
     createdAt: new Date()
   }
 }
@@ -280,4 +279,132 @@ export const getRecurrenceDescription = (rule) => {
   }
 
   return description
+}
+
+/**
+ * Atualiza múltiplas transações recorrentes de acordo com a opção selecionada
+ * @param {Object} editedTransaction - Transação editada com novos valores
+ * @param {string} editOption - Opção de edição (THIS_ONLY, THIS_AND_FUTURE, ALL)
+ * @param {Array} allTransactions - Todas as transações disponíveis
+ * @param {Object} db - Instância do Firestore
+ * @param {string} collectionPath - Caminho da coleção no Firestore
+ * @returns {Promise<number>} - Número de transações atualizadas
+ */
+export const updateRecurringSeries = async (
+  editedTransaction,
+  editOption,
+  allTransactions,
+  db,
+  collectionPath
+) => {
+  const { writeBatch, doc } = await import('firebase/firestore')
+
+  const affectedIds = getAffectedInstances(editedTransaction, editOption, allTransactions)
+  const batch = writeBatch(db)
+
+  // Preparar dados para atualização (remover campos que não devem ser atualizados)
+  const { id, recurrenceId, recurrenceIndex, recurrenceRule, isRecurring, createdAt, ...updateData } = editedTransaction
+
+  // Para cada transação afetada
+  affectedIds.forEach(transactionId => {
+    const docRef = doc(db, collectionPath, transactionId)
+
+    if (editOption === EDIT_OPTIONS.THIS_ONLY) {
+      // Para "apenas esta", mantemos os dados exatos
+      batch.update(docRef, updateData)
+    } else {
+      // Para "esta e futuras" ou "todas", precisamos recalcular datas se necessário
+      const originalTransaction = allTransactions.find(t => t.id === transactionId)
+
+      if (originalTransaction && editedTransaction.date.getTime() !== originalTransaction.date.getTime()) {
+        // Se a data mudou, recalcular série baseada na nova data
+        const dateDifference = editedTransaction.date.getTime() - originalTransaction.date.getTime()
+        const newDate = new Date(originalTransaction.date.getTime() + dateDifference)
+
+        batch.update(docRef, {
+          ...updateData,
+          date: newDate,
+          fiscalMonth: formatFiscalMonth(newDate)
+        })
+      } else {
+        // Apenas atualizar outros campos mantendo a data original
+        batch.update(docRef, {
+          ...updateData,
+          fiscalMonth: formatFiscalMonth(originalTransaction.date)
+        })
+      }
+    }
+  })
+
+  await batch.commit()
+  return affectedIds.length
+}
+
+/**
+ * Quebra uma série recorrente criando uma nova série a partir de uma instância
+ * @param {Object} transaction - Transação a partir da qual criar nova série
+ * @param {Object} newData - Novos dados para a transação
+ * @param {string} editOption - Opção de edição
+ * @param {Array} allTransactions - Todas as transações
+ * @param {Object} db - Instância do Firestore
+ * @param {string} collectionPath - Caminho da coleção
+ * @returns {Promise<number>} - Número de transações afetadas
+ */
+export const breakRecurrenceSeries = async (
+  transaction,
+  newData,
+  editOption,
+  allTransactions,
+  db,
+  collectionPath
+) => {
+  const { writeBatch, doc } = await import('firebase/firestore')
+
+  if (editOption === EDIT_OPTIONS.THIS_ONLY) {
+    // Simples: remove da série atual e cria transação independente
+    const batch = writeBatch(db)
+    const docRef = doc(db, collectionPath, transaction.id)
+
+    const { recurrenceId, recurrenceIndex, recurrenceRule, isRecurring, ...independentData } = newData
+
+    batch.update(docRef, {
+      ...independentData,
+      recurrenceId: null,
+      recurrenceIndex: null,
+      recurrenceRule: null,
+      isRecurring: false
+    })
+
+    await batch.commit()
+    return 1
+  }
+
+  if (editOption === EDIT_OPTIONS.THIS_AND_FUTURE) {
+    // Mais complexo: criar nova série para esta e futuras
+    const series = getRecurrenceSeries(transaction.recurrenceId, allTransactions)
+    const currentIndex = transaction.recurrenceIndex || 0
+    const affectedTransactions = series.filter(t => (t.recurrenceIndex || 0) >= currentIndex)
+
+    const batch = writeBatch(db)
+    const newRecurrenceId = generateRecurrenceId()
+
+    affectedTransactions.forEach((t, index) => {
+      const docRef = doc(db, collectionPath, t.id)
+      const { id, createdAt, ...baseData } = newData
+
+      batch.update(docRef, {
+        ...baseData,
+        recurrenceId: newRecurrenceId,
+        recurrenceIndex: index,
+        date: t.date, // Manter datas originais por enquanto
+        fiscalMonth: formatFiscalMonth(t.date)
+      })
+    })
+
+    await batch.commit()
+    return affectedTransactions.length
+  }
+
+  // Para ALL, usar a função normal de update
+  return updateRecurringSeries(newData, editOption, allTransactions, db, collectionPath)
 }

@@ -144,6 +144,10 @@ export function RevenueForm({
         setRecurrenceLoading(false)
         toast.success(`${dates.length} transações recorrentes criadas!`)
       } else if (isEditing) {
+        if (onSave) {
+          onSave(dataToSave)
+          return
+        }
         const docRef = doc(
           db,
           `artifacts/${appId}/users/${user.uid}/transactions`,
