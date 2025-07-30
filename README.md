@@ -57,16 +57,16 @@ Oportunidades de melhoria:
 ##### 2.2 Lógica de Negócio
 
 - [x] Implementar criação de série recorrente
-- [ ] Sistema de geração automática (1 ano à frente)
-- [ ] Trigger para criação de novas instâncias
-- [ ] Gestão de exceções e alterações
+- [ ] ~Sistema de geração automática (1 ano à frente)~
+- [ ] ~Trigger para criação de novas instâncias~
+- [ ] Implementar edição de série recorrente
 
 ##### 2.3 Operações em Série
 
 - [x] Modal de confirmação para edição/exclusão
 - [x] Opções: "Apenas esta", "Esta e próximas", "Todas"
-- [ ] Implementar lógica de propagação de mudanças
-- [ ] Histórico de alterações
+- [x] Implementar lógica de propagação de mudanças
+- [ ] ~Histórico de alterações~
 
 #### **FASE 3: Compras Parceladas**
 
