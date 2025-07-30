@@ -26,6 +26,7 @@ import {
   getAffectedInstances,
   updateRecurringSeries,
   breakRecurrenceSeries,
+  EDIT_OPTIONS,
 } from '../utils/recurrence'
 
 const formatDate = (date) => {
