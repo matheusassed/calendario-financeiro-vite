@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { doc, deleteDoc, writeBatch } from 'firebase/firestore'
+import { doc, deleteDoc, writeBatch, updateDoc } from 'firebase/firestore'
 import toast from 'react-hot-toast'
 import {
   MinusCircle,
@@ -250,7 +250,7 @@ export function DayDetailsView({
     }
   }
 
-  const handleSaveEdit = (editedData) => {
+  const handleSaveEdit = async (editedData) => {
     if (isRecurringTransaction(transactionToEdit)) {
       // Para transações recorrentes, armazenar dados e mostrar opções
       setPendingEditData(editedData)
@@ -258,8 +258,22 @@ export function DayDetailsView({
       setIsRecurrenceOptionsModalOpen(true)
     } else {
       // Para transações normais, salvar diretamente
-      setIsEditModalOpen(false)
-      setTransactionToEdit(null)
+      const loadingToast = toast.loading('Atualizando transação...')
+      try {
+        const docRef = doc(
+          db,
+          `artifacts/${appId}/users/${user.uid}/transactions`,
+          transactionToEdit.id,
+        )
+        await updateDoc(docRef, editedData)
+        toast.success('Transação atualizada com sucesso!', { id: loadingToast })
+      } catch (error) {
+        console.error('Erro ao atualizar transação:', error)
+        toast.error('Erro ao atualizar transação', { id: loadingToast })
+      } finally {
+        setIsEditModalOpen(false)
+        setTransactionToEdit(null)
+      }
     }
   }
 
@@ -338,9 +352,12 @@ export function DayDetailsView({
         )
       }
 
-      toast.success(`${updatedCount} transações atualizadas!`, {
-        id: loadingToast,
-      })
+      const message =
+        updatedCount === 1
+          ? 'Transação atualizada!'
+          : `${updatedCount} transações atualizadas!`
+
+      toast.success(message, { id: loadingToast })
     } catch (error) {
       console.error('Erro ao atualizar série:', error)
       toast.error('Erro ao atualizar transações', { id: loadingToast })

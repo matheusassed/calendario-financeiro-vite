@@ -302,37 +302,42 @@ export const updateRecurringSeries = async (
   const affectedIds = getAffectedInstances(editedTransaction, editOption, allTransactions)
   const batch = writeBatch(db)
 
-  // Preparar dados para atualização (remover campos que não devem ser atualizados)
-  const { id, recurrenceId, recurrenceIndex, recurrenceRule, isRecurring, createdAt, ...updateData } = editedTransaction
+  const {
+    id,
+    recurrenceId,
+    recurrenceIndex,
+    recurrenceRule,
+    isRecurring,
+    createdAt,
+    ...updateData
+  } = editedTransaction
 
-  // Para cada transação afetada
   affectedIds.forEach(transactionId => {
     const docRef = doc(db, collectionPath, transactionId)
+    const originalTransaction = allTransactions.find(t => t.id === transactionId)
+
+    if (!originalTransaction) return
 
     if (editOption === EDIT_OPTIONS.THIS_ONLY) {
-      // Para "apenas esta", mantemos os dados exatos
-      batch.update(docRef, updateData)
+      // Para "apenas esta", aplicar dados exatos mantendo metadados de recorrência
+      batch.update(docRef, {
+        ...updateData,
+        fiscalMonth: formatFiscalMonth(updateData.date || originalTransaction.date)
+      })
     } else {
-      // Para "esta e futuras" ou "todas", precisamos recalcular datas se necessário
-      const originalTransaction = allTransactions.find(t => t.id === transactionId)
-
-      if (originalTransaction && editedTransaction.date.getTime() !== originalTransaction.date.getTime()) {
-        // Se a data mudou, recalcular série baseada na nova data
-        const dateDifference = editedTransaction.date.getTime() - originalTransaction.date.getTime()
+      // Para "esta e futuras" ou "todas"
+      const updatedData = { ...updateData }
+      // Se a data mudou, calcular nova data baseada no offset
+      if (updateData.date && updateData.date.getTime() !== originalTransaction.date.getTime()) {
+        const dateDifference = updateData.date.getTime() - originalTransaction.date.getTime()
         const newDate = new Date(originalTransaction.date.getTime() + dateDifference)
-
-        batch.update(docRef, {
-          ...updateData,
-          date: newDate,
-          fiscalMonth: formatFiscalMonth(newDate)
-        })
+        updatedData.date = newDate
+        updatedData.fiscalMonth = formatFiscalMonth(newDate)
       } else {
-        // Apenas atualizar outros campos mantendo a data original
-        batch.update(docRef, {
-          ...updateData,
-          fiscalMonth: formatFiscalMonth(originalTransaction.date)
-        })
+        // Manter data original e recalcular fiscal month
+        updatedData.fiscalMonth = formatFiscalMonth(originalTransaction.date)
       }
+      batch.update(docRef, updatedData)
     }
   })
 
@@ -361,26 +366,35 @@ export const breakRecurrenceSeries = async (
   const { writeBatch, doc } = await import('firebase/firestore')
 
   if (editOption === EDIT_OPTIONS.THIS_ONLY) {
-    // Simples: remove da série atual e cria transação independente
+    // Remove da série atual e cria transação independente
     const batch = writeBatch(db)
     const docRef = doc(db, collectionPath, transaction.id)
 
-    const { recurrenceId, recurrenceIndex, recurrenceRule, isRecurring, ...independentData } = newData
+    // Remove campos de recorrência
+    const {
+      recurrenceId,
+      recurrenceIndex,
+      recurrenceRule,
+      isRecurring,
+      ...independentData
+    } = newData
 
-    batch.update(docRef, {
+    const finalData = {
       ...independentData,
       recurrenceId: null,
       recurrenceIndex: null,
       recurrenceRule: null,
-      isRecurring: false
-    })
+      isRecurring: false,
+      fiscalMonth: formatFiscalMonth(independentData.date || transaction.date)
+    }
 
+    batch.update(docRef, finalData)
     await batch.commit()
     return 1
   }
 
   if (editOption === EDIT_OPTIONS.THIS_AND_FUTURE) {
-    // Mais complexo: criar nova série para esta e futuras
+    // Criar nova série para esta e futuras
     const series = getRecurrenceSeries(transaction.recurrenceId, allTransactions)
     const currentIndex = transaction.recurrenceIndex || 0
     const affectedTransactions = series.filter(t => (t.recurrenceIndex || 0) >= currentIndex)
@@ -390,15 +404,19 @@ export const breakRecurrenceSeries = async (
 
     affectedTransactions.forEach((t, index) => {
       const docRef = doc(db, collectionPath, t.id)
+
+      // Remove campos específicos da transação original
       const { id, createdAt, ...baseData } = newData
 
-      batch.update(docRef, {
+      const updatedData = {
         ...baseData,
         recurrenceId: newRecurrenceId,
         recurrenceIndex: index,
-        date: t.date, // Manter datas originais por enquanto
+        date: t.date, // Manter datas originais
         fiscalMonth: formatFiscalMonth(t.date)
-      })
+      }
+
+      batch.update(docRef, updatedData)
     })
 
     await batch.commit()
@@ -407,4 +425,25 @@ export const breakRecurrenceSeries = async (
 
   // Para ALL, usar a função normal de update
   return updateRecurringSeries(newData, editOption, allTransactions, db, collectionPath)
+}
+
+/**
+ * Quebra uma série recorrente criando uma nova série a partir de uma instância
+ * @param {string} recurrenceId - ID da série
+ * @param {Array} allTransactions - Todas as transações
+ * @returns {Array} - Transações da série ordenadas por índice
+ */
+export const debugRecurrenceSeries = (recurrenceId, allTransactions) => {
+  const series = getRecurrenceSeries(recurrenceId, allTransactions)
+  console.log(`Série ${recurrenceId}:`, {
+    total: series.length,
+    transactions: series.map(t => ({
+      id: t.id,
+      index: t.recurrenceIndex,
+      date: t.date.toISOString().split('T')[0],
+      description: t.description,
+      value: t.value
+    }))
+  })
+  return series
 }
