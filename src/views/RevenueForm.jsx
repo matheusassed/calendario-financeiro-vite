@@ -148,6 +148,7 @@ export function RevenueForm({
           onSave(dataToSave)
           return
         }
+
         const docRef = doc(
           db,
           `artifacts/${appId}/users/${user.uid}/transactions`,
@@ -244,7 +245,11 @@ export function RevenueForm({
           >
             Cancelar
           </button>
-          <button type="submit" className="btn-primary" disabled={loading || recurrenceLoading}>
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={loading || recurrenceLoading}
+          >
             {loading
               ? 'Salvando...'
               : isEditing

@@ -174,10 +174,13 @@ export function ExpenseForm({
         setRecurrenceLoading(false)
         toast.success(`${dates.length} transações recorrentes criadas!`)
       } else if (isEditing) {
+        // Se tem função onSave (modal), chamar ela em vez de atualizar diretamente
         if (onSave) {
           onSave(dataToSave)
           return
         }
+
+        // Se não tem onSave, é edição direta - atualizar no Firestore
         const docRef = doc(
           db,
           `artifacts/${appId}/users/${user.uid}/transactions`,
@@ -393,7 +396,11 @@ export function ExpenseForm({
           >
             Cancelar
           </button>
-          <button type="submit" className="btn-primary" disabled={loading || recurrenceLoading}>
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={loading || recurrenceLoading}
+          >
             {loading
               ? 'Salvando...'
               : isEditing
