@@ -24,9 +24,16 @@ export const getFirstDayOfMonth = (year, month) => {
  * @returns {string} - A data formatada.
  */
 export const formatFiscalMonth = (date) => {
-  if (!date || typeof date.getFullYear !== 'function') {
-    return ''
+  if (!date) {
+    console.warn('Data inválida para formatFiscalMonth:', date)
+    return new Date().toISOString().substring(0, 7) // fallback para ano-mês atual
   }
+
+  if (typeof date.getFullYear !== 'function') {
+    console.warn('Objeto date inválido:', date)
+    return new Date().toISOString().substring(0, 7)
+  }
+
   const year = date.getFullYear()
   const month = (date.getMonth() + 1).toString().padStart(2, '0')
   return `${year}-${month}`

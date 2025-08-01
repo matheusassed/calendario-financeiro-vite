@@ -61,7 +61,6 @@ export function DayDetailsView({
   const [transactionToEdit, setTransactionToEdit] = useState(null)
   const [isRecurrenceEditModalOpen, setIsRecurrenceEditModalOpen] =
     useState(false)
-  const [recurrenceOperation, setRecurrenceOperation] = useState('edit')
   const [isRecurrenceOptionsModalOpen, setIsRecurrenceOptionsModalOpen] =
     useState(false)
   const [pendingEditData, setPendingEditData] = useState(null)
@@ -207,10 +206,8 @@ export function DayDetailsView({
   const handleDeleteClick = (transaction) => {
     if (isRecurringTransaction(transaction)) {
       setTransactionToDelete(transaction)
-      setRecurrenceOperation('delete')
       setIsRecurrenceEditModalOpen(true)
     } else {
-      // Lógica normal
       setTransactionToDelete(transaction)
       setIsDeleteModalOpen(true)
     }
@@ -239,23 +236,17 @@ export function DayDetailsView({
   }
 
   const handleEditClick = (transaction) => {
-    if (isRecurringTransaction(transaction)) {
-      setTransactionToEdit(transaction)
-      setRecurrenceOperation('edit')
-      setIsRecurrenceEditModalOpen(true)
-    } else {
-      // Lógica normal
-      setTransactionToEdit(transaction)
-      setIsEditModalOpen(true)
-    }
+    // Remover a verificação de recorrência aqui - sempre abrir o formulário
+    setTransactionToEdit(transaction)
+    setIsEditModalOpen(true)
   }
 
   const handleSaveEdit = async (editedData) => {
     if (isRecurringTransaction(transactionToEdit)) {
-      // Para transações recorrentes, armazenar dados e mostrar opções
+      // Para transações recorrentes, armazenar dados e mostrar opções DIRETAMENTE
       setPendingEditData(editedData)
       setIsEditModalOpen(false)
-      setIsRecurrenceOptionsModalOpen(true)
+      setIsRecurrenceOptionsModalOpen(true) // Pular RecurrenceEditModal
     } else {
       // Para transações normais, salvar diretamente
       const loadingToast = toast.loading('Atualizando transação...')
@@ -281,58 +272,67 @@ export function DayDetailsView({
     categories.find((c) => c.id === id)?.name || 'Sem Categoria'
   const currentFiscalMonth = formatFiscalMonth(selectedDate)
 
-  const handleRecurrenceConfirm = async (editOption) => {
-    const transaction =
-      recurrenceOperation === 'edit' ? transactionToEdit : transactionToDelete
+  const handleRecurrenceDeleteConfirm = async (editOption) => {
+    const transaction = transactionToDelete // Apenas para delete
     const affectedIds = getAffectedInstances(
       transaction,
       editOption,
       transactions,
     )
 
-    if (recurrenceOperation === 'edit') {
-      // Para edição, abrir modal de opções
+    const loadingToast = toast.loading('Excluindo transações...')
+    try {
+      const batch = writeBatch(db)
+      affectedIds.forEach((id) => {
+        const docRef = doc(
+          db,
+          `artifacts/${appId}/users/${user.uid}/transactions`,
+          id,
+        )
+        batch.delete(docRef)
+      })
+      await batch.commit()
+      toast.success(`${affectedIds.length} transação(ões) excluída(s)!`, {
+        id: loadingToast,
+      })
+    } catch (error) {
+      toast.error('Erro ao excluir transações', { id: loadingToast })
+      console.error('Erro ao excluir transações:', error)
+    } finally {
       setIsRecurrenceEditModalOpen(false)
-      setIsRecurrenceOptionsModalOpen(true)
-    } else {
-      // Lógica de exclusão (manter como está)
-      const loadingToast = toast.loading('Excluindo transações...')
-      try {
-        const batch = writeBatch(db)
-        affectedIds.forEach((id) => {
-          const docRef = doc(
-            db,
-            `artifacts/${appId}/users/${user.uid}/transactions`,
-            id,
-          )
-          batch.delete(docRef)
-        })
-        await batch.commit()
-        toast.success(`${affectedIds.length} transações excluídas!`, {
-          id: loadingToast,
-        })
-      } catch (error) {
-        toast.error('Erro ao excluir transações', { id: loadingToast })
-        console.log('Erro ao excluir transações:', error)
-      }
-
-      setIsRecurrenceEditModalOpen(false)
-      setTransactionToEdit(null)
       setTransactionToDelete(null)
     }
   }
 
   const handleEditOptionsConfirm = async (editOption, isAdvanced) => {
+    console.log('Valores de contexto:', {
+      appId,
+      userId: user?.uid,
+      transactionToEdit: transactionToEdit?.id,
+      pendingEditData: !!pendingEditData,
+      transactionsCount: transactions?.length
+    })
     if (!transactionToEdit || !pendingEditData) return
 
     const loadingToast = toast.loading('Atualizando transações...')
 
     try {
+      // CORREÇÃO: Garantir que o caminho está correto
       const collectionPath = `artifacts/${appId}/users/${user.uid}/transactions`
+
+      // Debug para verificar se os valores estão corretos
+      console.log('Debug updateRecurringSeries:', {
+        collectionPath,
+        appId,
+        userId: user.uid,
+        editOption,
+        isAdvanced,
+        transactionId: transactionToEdit.id,
+      })
+
       let updatedCount = 0
 
       if (isAdvanced && editOption !== EDIT_OPTIONS.ALL) {
-        // Usar função avançada que pode quebrar séries
         updatedCount = await breakRecurrenceSeries(
           transactionToEdit,
           pendingEditData,
@@ -342,7 +342,6 @@ export function DayDetailsView({
           collectionPath,
         )
       } else {
-        // Usar função padrão para atualização simples
         updatedCount = await updateRecurringSeries(
           pendingEditData,
           editOption,
@@ -360,6 +359,7 @@ export function DayDetailsView({
       toast.success(message, { id: loadingToast })
     } catch (error) {
       console.error('Erro ao atualizar série:', error)
+      console.error('Stack completo:', error.stack)
       toast.error('Erro ao atualizar transações', { id: loadingToast })
     } finally {
       setIsRecurrenceOptionsModalOpen(false)
@@ -370,6 +370,7 @@ export function DayDetailsView({
 
   return (
     <>
+      {/* Modal de Exclusão Normal */}
       <ConfirmModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
@@ -382,6 +383,7 @@ export function DayDetailsView({
         </p>
         <p>Esta ação não pode ser desfeita.</p>
       </ConfirmModal>
+      {/* Modal de Edição */}
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
@@ -394,7 +396,7 @@ export function DayDetailsView({
         {transactionToEdit?.type === 'expense' && (
           <ExpenseForm
             initialData={transactionToEdit}
-            onSave={(data) => handleSaveEdit(data)} // Modificar esta linha
+            onSave={handleSaveEdit}
             onCancel={() => setIsEditModalOpen(false)}
             categories={categories}
             creditCards={creditCards}
@@ -405,23 +407,20 @@ export function DayDetailsView({
         {transactionToEdit?.type === 'revenue' && (
           <RevenueForm
             initialData={transactionToEdit}
-            onSave={(data) => handleSaveEdit(data)} // Modificar esta linha
+            onSave={handleSaveEdit}
             onCancel={() => setIsEditModalOpen(false)}
             globalSettings={globalSettings}
           />
         )}
       </Modal>
+      {/* Modal de Exclusão de Recorrência (APENAS PARA DELETE) */}
       <RecurrenceEditModal
         isOpen={isRecurrenceEditModalOpen}
         onClose={() => setIsRecurrenceEditModalOpen(false)}
-        onConfirm={handleRecurrenceConfirm}
-        transaction={
-          recurrenceOperation === 'edit'
-            ? transactionToEdit
-            : transactionToDelete
-        }
-        operation={recurrenceOperation}
+        onConfirm={handleRecurrenceDeleteConfirm}
+        transaction={transactionToDelete}
       />
+      {/* Modal de Opções de Edição (APENAS PARA EDIT) */}
       <RecurrenceEditOptions
         isOpen={isRecurrenceOptionsModalOpen}
         onClose={() => {

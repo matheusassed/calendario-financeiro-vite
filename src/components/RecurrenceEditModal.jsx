@@ -1,5 +1,5 @@
 import React from 'react'
-import { RefreshCw, AlertTriangle } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Trash2 } from 'lucide-react'
 import { EDIT_OPTIONS } from '../utils/recurrence'
 
 export function RecurrenceEditModal({
@@ -7,13 +7,10 @@ export function RecurrenceEditModal({
   onClose,
   onConfirm,
   transaction,
-  operation = 'edit', // 'edit' ou 'delete'
 }) {
   if (!isOpen || !transaction) {
     return null
   }
-
-  const isEdit = operation === 'edit'
 
   const handleOptionSelect = (option) => {
     onConfirm(option)
@@ -22,20 +19,11 @@ export function RecurrenceEditModal({
   const getOptionDescription = (option) => {
     switch (option) {
       case EDIT_OPTIONS.THIS_ONLY:
-        return isEdit
-          ? 'Apenas esta transação será modificada. As outras instâncias da série permanecerão inalteradas.'
-          : 'Apenas esta transação será excluída. As outras instâncias da série permanecerão inalteradas.'
-
+        return 'Apenas esta transação será excluída. As outras instâncias da série permanecerão inalteradas.'
       case EDIT_OPTIONS.THIS_AND_FUTURE:
-        return isEdit
-          ? 'Esta transação e todas as futuras da série serão modificadas. As transações passadas permanecerão inalteradas.'
-          : 'Esta transação e todas as futuras da série serão excluídas. As transações passadas permanecerão inalteradas.'
-
+        return 'Esta transação e todas as futuras da série serão excluídas. As transações passadas permanecerão inalteradas.'
       case EDIT_OPTIONS.ALL:
-        return isEdit
-          ? 'Todas as transações desta série recorrente serão modificadas, incluindo passadas e futuras.'
-          : 'Todas as transações desta série recorrente serão excluídas, incluindo passadas e futuras.'
-
+        return 'Todas as transações desta série recorrente serão excluídas, incluindo passadas e futuras.'
       default:
         return ''
     }
@@ -57,10 +45,8 @@ export function RecurrenceEditModal({
       >
         <div className="modal-header">
           <div className="modal-title-group">
-            <RefreshCw className="modal-icon recurrence" />
-            <h3 className="modal-title">
-              {isEdit ? 'Editar' : 'Excluir'} Transação Recorrente
-            </h3>
+            <Trash2 className="modal-icon delete" />
+            <h3 className="modal-title">Excluir Transação Recorrente</h3>
           </div>
         </div>
 
@@ -83,15 +69,15 @@ export function RecurrenceEditModal({
           <div className="warning-section">
             <AlertTriangle className="warning-icon" />
             <p>
-              Esta transação faz parte de uma série recorrente. Como você
-              gostaria de proceder?
+              Esta transação faz parte de uma série recorrente. Quais transações
+              você deseja excluir?
             </p>
           </div>
 
           <div className="edit-options">
             <button
               onClick={() => handleOptionSelect(EDIT_OPTIONS.THIS_ONLY)}
-              className="edit-option-button"
+              className="edit-option-button delete-option"
             >
               <div className="option-header">
                 <span className="option-title">Apenas Esta</span>
@@ -104,7 +90,7 @@ export function RecurrenceEditModal({
 
             <button
               onClick={() => handleOptionSelect(EDIT_OPTIONS.THIS_AND_FUTURE)}
-              className="edit-option-button"
+              className="edit-option-button delete-option"
             >
               <div className="option-header">
                 <span className="option-title">Esta e Futuras</span>
@@ -117,7 +103,7 @@ export function RecurrenceEditModal({
 
             <button
               onClick={() => handleOptionSelect(EDIT_OPTIONS.ALL)}
-              className="edit-option-button"
+              className="edit-option-button delete-option"
             >
               <div className="option-header">
                 <span className="option-title">Toda a Série</span>

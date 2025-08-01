@@ -176,11 +176,42 @@ export const getRecurrenceSeries = (recurrenceId, allTransactions) => {
  * @returns {Array} - IDs das transações que devem ser afetadas
  */
 export const getAffectedInstances = (transaction, editOption, allTransactions) => {
+  // Validações
+  if (!transaction || !transaction.id) {
+    console.error('Transação inválida:', transaction)
+    return []
+  }
+
+  if (!editOption) {
+    console.error('editOption é obrigatório')
+    return [transaction.id]
+  }
+
+  if (!allTransactions || !Array.isArray(allTransactions)) {
+    console.error('allTransactions deve ser um array')
+    return [transaction.id]
+  }
+
+  console.log('getAffectedInstances chamada:', {
+    transactionId: transaction.id,
+    isRecurring: isRecurringTransaction(transaction),
+    recurrenceId: transaction.recurrenceId,
+    editOption
+  })
+
   if (!isRecurringTransaction(transaction)) {
     return [transaction.id]
   }
 
   const series = getRecurrenceSeries(transaction.recurrenceId, allTransactions)
+  console.log('Série encontrada:', series.length, 'transações')
+
+  const futureIds = series
+    .filter(t => (t.recurrenceIndex || 0) >= currentIndex)
+    .map(t => t.id)
+
+  const allIds = series.map(t => t.id)
+
   const currentIndex = transaction.recurrenceIndex || 0
 
   switch (editOption) {
@@ -188,14 +219,15 @@ export const getAffectedInstances = (transaction, editOption, allTransactions) =
       return [transaction.id]
 
     case EDIT_OPTIONS.THIS_AND_FUTURE:
-      return series
-        .filter(t => (t.recurrenceIndex || 0) >= currentIndex)
-        .map(t => t.id)
+      console.log('IDs futuras:', futureIds)
+      return futureIds
 
     case EDIT_OPTIONS.ALL:
-      return series.map(t => t.id)
+      console.log('Todos os IDs:', allIds)
+      return allIds
 
     default:
+      console.warn('editOption não reconhecida:', editOption)
       return [transaction.id]
   }
 }
@@ -237,9 +269,16 @@ export const createRecurrenceInstance = (
  * (Duplicado de helpers.js para evitar dependência circular)
  */
 const formatFiscalMonth = (date) => {
-  if (!date || typeof date.getFullYear !== 'function') {
-    return ''
+  if (!date) {
+    console.warn('Data inválida para formatFiscalMonth:', date)
+    return new Date().toISOString().substring(0, 7) // fallback para ano-mês atual
   }
+
+  if (typeof date.getFullYear !== 'function') {
+    console.warn('Objeto date inválido:', date)
+    return new Date().toISOString().substring(0, 7)
+  }
+
   const year = date.getFullYear()
   const month = (date.getMonth() + 1).toString().padStart(2, '0')
   return `${year}-${month}`
@@ -297,11 +336,43 @@ export const updateRecurringSeries = async (
   db,
   collectionPath
 ) => {
+  // Validações de entrada
+  if (!editedTransaction) {
+    throw new Error('editedTransaction é obrigatório')
+  }
+  if (!editOption) {
+    throw new Error('editOption é obrigatório')
+  }
+  if (!allTransactions || !Array.isArray(allTransactions)) {
+    throw new Error('allTransactions deve ser um array')
+  }
+  if (!db) {
+    throw new Error('db (Firestore) é obrigatório')
+  }
+  if (!collectionPath || typeof collectionPath !== 'string') {
+    throw new Error(`collectionPath inválido: ${collectionPath}`)
+  }
+
   const { writeBatch, doc } = await import('firebase/firestore')
 
+  console.log('updateRecurringSeries chamada com:', {
+    editedTransaction: editedTransaction.id,
+    editOption,
+    collectionPath,
+    allTransactionsCount: allTransactions.length
+  })
+
   const affectedIds = getAffectedInstances(editedTransaction, editOption, allTransactions)
+  console.log('IDs afetados:', affectedIds)
+
+  if (affectedIds.length === 0) {
+    console.warn('Nenhuma transação afetada encontrada')
+    return 0
+  }
+
   const batch = writeBatch(db)
 
+  // Preparar dados para atualização (remover campos que não devem ser propagados)
   const {
     id,
     recurrenceId,
@@ -312,36 +383,64 @@ export const updateRecurringSeries = async (
     ...updateData
   } = editedTransaction
 
-  affectedIds.forEach(transactionId => {
-    const docRef = doc(db, collectionPath, transactionId)
-    const originalTransaction = allTransactions.find(t => t.id === transactionId)
+  console.log('Dados para atualização:', updateData)
 
-    if (!originalTransaction) return
+  // Para cada transação afetada
+  affectedIds.forEach((transactionId, index) => {
+    console.log(`Processando transação ${index + 1}/${affectedIds.length}: ${transactionId}`)
 
-    if (editOption === EDIT_OPTIONS.THIS_ONLY) {
-      // Para "apenas esta", aplicar dados exatos mantendo metadados de recorrência
-      batch.update(docRef, {
-        ...updateData,
-        fiscalMonth: formatFiscalMonth(updateData.date || originalTransaction.date)
-      })
-    } else {
-      // Para "esta e futuras" ou "todas"
-      const updatedData = { ...updateData }
-      // Se a data mudou, calcular nova data baseada no offset
-      if (updateData.date && updateData.date.getTime() !== originalTransaction.date.getTime()) {
-        const dateDifference = updateData.date.getTime() - originalTransaction.date.getTime()
-        const newDate = new Date(originalTransaction.date.getTime() + dateDifference)
-        updatedData.date = newDate
-        updatedData.fiscalMonth = formatFiscalMonth(newDate)
-      } else {
-        // Manter data original e recalcular fiscal month
-        updatedData.fiscalMonth = formatFiscalMonth(originalTransaction.date)
+    // Validar se o transactionId é válido
+    if (!transactionId || typeof transactionId !== 'string') {
+      console.error(`ID de transação inválido: ${transactionId}`)
+      return
+    }
+
+    try {
+      const docRef = doc(db, collectionPath, transactionId)
+      console.log('Referência do documento criada:', docRef.path)
+
+      const originalTransaction = allTransactions.find(t => t.id === transactionId)
+      if (!originalTransaction) {
+        console.warn(`Transação original não encontrada para ID: ${transactionId}`)
+        return
       }
-      batch.update(docRef, updatedData)
+
+      if (editOption === EDIT_OPTIONS.THIS_ONLY) {
+        // Para "apenas esta", aplicar dados exatos mantendo metadados de recorrência
+        const finalData = {
+          ...updateData,
+          fiscalMonth: formatFiscalMonth(updateData.date || originalTransaction.date)
+        }
+        console.log(`Atualizando ${transactionId} (THIS_ONLY):`, finalData)
+        batch.update(docRef, finalData)
+      } else {
+        // Para "esta e futuras" ou "todas"
+        const updatedData = { ...updateData }
+
+        // Se a data mudou, calcular nova data baseada no offset
+        if (updateData.date && updateData.date.getTime() !== originalTransaction.date.getTime()) {
+          const dateDifference = updateData.date.getTime() - originalTransaction.date.getTime()
+          const newDate = new Date(originalTransaction.date.getTime() + dateDifference)
+          updatedData.date = newDate
+          updatedData.fiscalMonth = formatFiscalMonth(newDate)
+        } else {
+          // Manter data original e recalcular fiscal month
+          updatedData.fiscalMonth = formatFiscalMonth(originalTransaction.date)
+        }
+
+        console.log(`Atualizando ${transactionId} (${editOption}):`, updatedData)
+        batch.update(docRef, updatedData)
+      }
+    } catch (error) {
+      console.error(`Erro ao processar transação ${transactionId}:`, error)
+      throw error
     }
   })
 
+  console.log('Executando batch commit...')
   await batch.commit()
+  console.log(`${affectedIds.length} transações atualizadas com sucesso`)
+
   return affectedIds.length
 }
 
