@@ -305,37 +305,37 @@ export function DayDetailsView({
   }
 
   const handleEditOptionsConfirm = async (editOption, isAdvanced) => {
-    console.log('Valores de contexto:', {
-      appId,
-      userId: user?.uid,
-      transactionToEdit: transactionToEdit?.id,
-      pendingEditData: !!pendingEditData,
-      transactionsCount: transactions?.length
-    })
     if (!transactionToEdit || !pendingEditData) return
 
     const loadingToast = toast.loading('Atualizando transações...')
 
     try {
-      // CORREÇÃO: Garantir que o caminho está correto
+      if (!appId || !user?.uid) {
+        throw new Error(
+          `Contexto inválido - appId: ${appId}, userId: ${user?.uid}`,
+        )
+      }
+
       const collectionPath = `artifacts/${appId}/users/${user.uid}/transactions`
 
-      // Debug para verificar se os valores estão corretos
-      console.log('Debug updateRecurringSeries:', {
-        collectionPath,
-        appId,
-        userId: user.uid,
-        editOption,
-        isAdvanced,
-        transactionId: transactionToEdit.id,
+      // CORREÇÃO: Combinar dados da transação original com os novos dados
+      const editedTransaction = {
+        ...transactionToEdit, // Metadados originais (id, recurrenceId, etc.)
+        ...pendingEditData, // Novos dados do formulário
+      }
+
+      console.log('Debug - dados combinados:', {
+        original: transactionToEdit,
+        newData: pendingEditData,
+        combined: editedTransaction,
       })
 
       let updatedCount = 0
 
       if (isAdvanced && editOption !== EDIT_OPTIONS.ALL) {
         updatedCount = await breakRecurrenceSeries(
-          transactionToEdit,
-          pendingEditData,
+          transactionToEdit, // Usar transação original para metadados
+          editedTransaction, // Usar dados combinados para atualização
           editOption,
           transactions,
           db,
@@ -343,7 +343,7 @@ export function DayDetailsView({
         )
       } else {
         updatedCount = await updateRecurringSeries(
-          pendingEditData,
+          editedTransaction, // Usar dados combinados
           editOption,
           transactions,
           db,
