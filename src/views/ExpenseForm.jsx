@@ -21,6 +21,8 @@ import {
   createRecurrenceInstance,
 } from '../utils/recurrence'
 import { validateRecurrenceRule } from '../utils/recurrence'
+import { InstallmentConfig } from '../components/InstallmentConfig'
+import { getInstallmentDates } from '../utils/installments'
 
 export function ExpenseForm({
   onSave,
@@ -49,6 +51,13 @@ export function ExpenseForm({
   const [loading, setLoading] = useState(false)
   const [recurrenceRule, setRecurrenceRule] = useState(null)
   const [recurrenceLoading, setRecurrenceLoading] = useState(false)
+  const [installmentConfig, setInstallmentConfig] = useState({
+    isInstallment: false,
+    isValid: true,
+    installments: 1,
+    totalValue: 0,
+    installmentValue: 0
+  })
 
   const isEditing = !!initialData
 
@@ -103,6 +112,10 @@ export function ExpenseForm({
 
   const handleRecurrenceChange = useCallback((rule) => {
     setRecurrenceRule(rule)
+  }, [])
+
+  const handleInstallmentChange = useCallback((config) => {
+    setInstallmentConfig(config)
   }, [])
 
   const handleChange = (e) => {
@@ -191,6 +204,58 @@ export function ExpenseForm({
       } else if (formData.paymentMethod === 'credit' && formData.cardId) {
         // LÓGICA DE FATURA
         const card = creditCards.find((c) => c.id === formData.cardId)
+        
+        // Handle installment payments
+        if (installmentConfig.isInstallment && installmentConfig.isValid) {
+          setRecurrenceLoading(true)
+          const batch = writeBatch(db)
+          const baseTransaction = {
+            userId: user.uid,
+            type: 'expense',
+            description: formData.description,
+            value: installmentConfig.installmentValue,
+            fiscalMonth: formData.fiscalMonth,
+            paymentMethod: formData.paymentMethod,
+            categoryId: formData.categoryId,
+            cardId: formData.cardId,
+            invoiceId: null
+          }
+
+          // Generate installment dates
+          const dates = getInstallmentDates(
+            new Date(formData.date + 'T12:00:00'),
+            card,
+            installmentConfig.installments
+          )
+
+          // Create all installment transactions
+          dates.forEach((date, index) => {
+            const installmentData = {
+              ...baseTransaction,
+              date: date,
+              installmentId: `inst_${Date.now()}`,
+              installmentIndex: index + 1,
+              installmentTotal: installmentConfig.installments,
+              installmentValue: index === installmentConfig.installments - 1 
+                ? installmentConfig.totalValue - (installmentConfig.installmentValue * (installmentConfig.installments - 1))
+                : installmentConfig.installmentValue,
+              totalValue: installmentConfig.totalValue,
+              isInstallment: true,
+              description: `${formData.description} (${index + 1}/${installmentConfig.installments})`
+            }
+
+            const docRef = doc(
+              collection(db, `artifacts/${appId}/users/${user.uid}/transactions`)
+            )
+            batch.set(docRef, installmentData)
+          })
+
+          await batch.commit()
+          setRecurrenceLoading(false)
+          toast.success(`${installmentConfig.installments} parcelas criadas com sucesso!`, { id: loadingToast })
+          if (onSave) onSave()
+          return
+        }
         let invoiceMonthDate = new Date(transactionDate)
         if (transactionDate.getDate() > card.invoiceCloseDay) {
           invoiceMonthDate.setMonth(invoiceMonthDate.getMonth() + 1)
@@ -381,6 +446,17 @@ export function ExpenseForm({
             required
           />
         </div>
+
+        {formData.paymentMethod === 'credit' && (
+          <InstallmentConfig
+            onInstallmentChange={handleInstallmentChange}
+            totalValue={parseFloat(formData.value) || 0}
+            selectedCard={creditCards.find(c => c.id === formData.cardId)}
+            purchaseDate={new Date(formData.date + 'T12:00:00')}
+            disabled={isEditing}
+          />
+        )}
+
         <RecurrenceConfig
           onRuleChange={handleRecurrenceChange}
           startDate={new Date(formData.date + 'T12:00:00')}
