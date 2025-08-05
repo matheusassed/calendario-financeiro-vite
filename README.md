@@ -59,7 +59,7 @@ Oportunidades de melhoria:
 - [x] Implementar criação de série recorrente
 - [ ] ~Sistema de geração automática (1 ano à frente)~
 - [ ] ~Trigger para criação de novas instâncias~
-- [ ] Implementar edição de série recorrente
+- [x] Implementar edição de série recorrente
 
 ##### 2.3 Operações em Série
 
