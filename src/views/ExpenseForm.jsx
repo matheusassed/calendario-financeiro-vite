@@ -230,6 +230,13 @@ export function ExpenseForm({
 
           // Create all installment transactions
           dates.forEach((date, index) => {
+            // Calculate correct invoice month for each installment
+            let invoiceMonthDate = new Date(date)
+            if (invoiceMonthDate.getDate() > card.invoiceCloseDay) {
+              invoiceMonthDate.setMonth(invoiceMonthDate.getMonth() + 1)
+            }
+            const invoiceMonthStr = formatFiscalMonth(invoiceMonthDate)
+
             const installmentData = {
               ...baseTransaction,
               date: date,
@@ -241,7 +248,8 @@ export function ExpenseForm({
                 : installmentConfig.installmentValue,
               totalValue: installmentConfig.totalValue,
               isInstallment: true,
-              description: `${formData.description} (${index + 1}/${installmentConfig.installments})`
+              description: `${formData.description} (${index + 1}/${installmentConfig.installments})`,
+              fiscalMonth: invoiceMonthStr
             }
 
             const docRef = doc(
