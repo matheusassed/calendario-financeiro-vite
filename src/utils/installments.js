@@ -40,8 +40,15 @@ export const getInstallmentDates = (purchaseDate, card, installments) => {
       date.setMonth(date.getMonth() + 1)
     }
     date.setDate(card.invoiceCloseDay)
+    
+    // Ensure we're using the correct fiscal month for the invoice
+    const invoiceMonthDate = new Date(date)
+    if (invoiceMonthDate.getDate() > card.invoiceCloseDay) {
+      invoiceMonthDate.setMonth(invoiceMonthDate.getMonth() + 1)
+    }
+    invoiceMonthDate.setDate(card.invoiceCloseDay)
 
-    dates.push(date)
+    dates.push(invoiceMonthDate)
   }
 
   return dates
