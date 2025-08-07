@@ -1,119 +1,337 @@
 /**
- * Utilitários para cálculo e gerenciamento de compras parceladas
+ * Utilitários para gerenciamento de compras parceladas
  */
+
+import { formatFiscalMonth } from './helpers'
+
+/**
+ * Configurações de parcelamento
+ */
+export const INSTALLMENT_CONFIG = {
+  MIN_INSTALLMENTS: 2,
+  MAX_INSTALLMENTS: 24,
+  MIN_INSTALLMENT_VALUE: 1.00
+}
 
 /**
  * Calcula o valor de cada parcela
  * @param {number} totalValue - Valor total da compra
  * @param {number} installments - Número de parcelas
- * @returns {number} Valor de cada parcela
+ * @returns {Object} - {installmentValue: number, remainder: number, values: number[]}
  */
 export const calculateInstallments = (totalValue, installments) => {
-  if (installments <= 0) return 0
-  const value = totalValue / installments
-  // Arredonda para 2 casas decimais e trata casos de divisão não exata
-  const rounded = Math.round(value * 100) / 100
-  return installments === 1 ? totalValue : rounded
+  if (!totalValue || !installments || installments < 1) {
+    return { installmentValue: 0, remainder: 0, values: [] }
+  }
+
+  // Calcular valor base da parcela (sem arredondamento)
+  const baseValue = totalValue / installments
+  const installmentValue = Math.floor(baseValue * 100) / 100 // Truncar para 2 decimais
+  const remainder = totalValue - (installmentValue * installments)
+
+  // Criar array com valores das parcelas
+  const values = Array(installments).fill(installmentValue)
+  
+  // Distribuir o resto nas últimas parcelas (centavos)
+  const remainderCents = Math.round(remainder * 100)
+  if (remainder > 0) {
+    for (let i = installments - remainderCents; i < installments; i++) {
+      values[i] += 0.01
+    }
+  }
+
+  return {
+    installmentValue: installmentValue,
+    remainder: remainderCents || 0,
+    values: values.map(v => Math.round(v * 100) / 100) // Garantir 2 decimais
+  }
 }
 
 /**
- * Gera as datas das parcelas baseado na data de compra e ciclo do cartão
- * @param {Date} purchaseDate - Data da compra original
- * @param {Object} card - Objeto do cartão de crédito
+ * Calcula as datas das faturas para cada parcela
+ * @param {Date} purchaseDate - Data da compra
+ * @param {Object} card - Dados do cartão de crédito
  * @param {number} installments - Número de parcelas
- * @returns {Date[]} Array de datas das parcelas
+ * @returns {Date[]} - Array com as datas das faturas
  */
 export const getInstallmentDates = (purchaseDate, card, installments) => {
-  if (!card || !card.invoiceCloseDay) {
-    throw new Error('Cartão inválido ou sem dia de fechamento definido')
+  if (!purchaseDate || !card || !installments) {
+    return []
   }
 
   const dates = []
-  const baseDate = new Date(purchaseDate)
-  
-  for (let i = 0; i < installments; i++) {
-    const date = new Date(baseDate)
-    date.setMonth(date.getMonth() + i)
-    
-    // Ajusta para o mês de fechamento correto
-    if (date.getDate() > card.invoiceCloseDay) {
-      date.setMonth(date.getMonth() + 1)
-    }
-    date.setDate(card.invoiceCloseDay)
-    
-    // Ensure we're using the correct fiscal month for the invoice
-    const invoiceMonthDate = new Date(date)
-    if (invoiceMonthDate.getDate() > card.invoiceCloseDay) {
-      invoiceMonthDate.setMonth(invoiceMonthDate.getMonth() + 1)
-    }
-    invoiceMonthDate.setDate(card.invoiceCloseDay)
+  let currentDate = new Date(purchaseDate)
 
-    dates.push(invoiceMonthDate)
+  // Determinar em qual fatura a primeira parcela vai entrar
+  let firstInvoiceMonth = new Date(currentDate)
+  
+  // Se a compra foi depois do fechamento, vai para a próxima fatura
+  if (currentDate.getDate() > card.invoiceCloseDay) {
+    firstInvoiceMonth.setMonth(firstInvoiceMonth.getMonth() + 1)
+  }
+
+  // Gerar datas das próximas faturas
+  for (let i = 0; i < installments; i++) {
+    const invoiceDate = new Date(firstInvoiceMonth)
+    invoiceDate.setMonth(invoiceDate.getMonth() + i)
+    dates.push(invoiceDate)
   }
 
   return dates
 }
 
 /**
- * Gera uma série de transações parceladas
- * @param {Object} baseTransaction - Transação base (modelo para todas as parcelas)
- * @param {Object} config - Configuração do parcelamento
- * @param {number} config.totalValue - Valor total
- * @param {number} config.installments - Número de parcelas
- * @param {Object} config.card - Cartão de crédito usado
- * @returns {Object[]} Array de transações parceladas
+ * Cria um ID único para uma série de parcelas
+ * @returns {string} - ID único
  */
-export const generateInstallmentSeries = (baseTransaction, config) => {
-  const { totalValue, installments, card } = config
-  const installmentValue = calculateInstallments(totalValue, installments)
-  const dates = getInstallmentDates(baseTransaction.date, card, installments)
-  const installmentId = `inst_${Date.now()}` // ID único para agrupar as parcelas
-
-  return dates.map((date, index) => ({
-    ...baseTransaction,
-    id: `${baseTransaction.id}_${index + 1}`,
-    date: date.toISOString(),
-    installmentId,
-    installmentIndex: index + 1,
-    installmentTotal: installments,
-    installmentValue: index === installments - 1 
-      ? totalValue - (installmentValue * (installments - 1)) // Última parcela ajustada
-      : installmentValue,
-    totalValue,
-    isInstallment: true,
-    description: `${baseTransaction.description} (${index + 1}/${installments})`
-  }))
+export const generateInstallmentId = () => {
+  return `inst_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 }
 
 /**
- * Valida os parâmetros de um parcelamento
- * @param {number} totalValue - Valor total
- * @param {number} installments - Número de parcelas
- * @param {Object} card - Cartão de crédito
- * @returns {Object} { isValid: boolean, errors: string[] }
+ * Verifica se uma transação é uma parcela
+ * @param {Object} transaction - Transação
+ * @returns {boolean}
  */
-export const validateInstallment = (totalValue, installments, card) => {
+export const isInstallmentTransaction = (transaction) => {
+  return !!(transaction.installmentId && transaction.isInstallment)
+}
+
+/**
+ * Obtém todas as parcelas de uma série
+ * @param {string} installmentId - ID da série de parcelas
+ * @param {Array} allTransactions - Todas as transações
+ * @returns {Array} - Parcelas ordenadas por índice
+ */
+export const getInstallmentSeries = (installmentId, allTransactions) => {
+  return allTransactions
+    .filter(t => t.installmentId === installmentId)
+    .sort((a, b) => (a.installmentIndex || 0) - (b.installmentIndex || 0))
+}
+
+/**
+ * Valida uma configuração de parcelamento
+ * @param {Object} config - Configuração do parcelamento
+ * @returns {Object} - {isValid: boolean, errors: string[]}
+ */
+export const validateInstallmentConfig = (config) => {
   const errors = []
-  
-  if (totalValue <= 0) {
-    errors.push('O valor total deve ser maior que zero')
+
+  if (!config) {
+    errors.push('Configuração de parcelamento é obrigatória')
+    return { isValid: false, errors }
   }
-  
-  if (installments < 1 || installments > 24) {
-    errors.push('O número de parcelas deve estar entre 1 e 24')
+
+  if (!config.totalValue || config.totalValue <= 0) {
+    errors.push('Valor total deve ser maior que zero')
   }
-  
-  const installmentValue = calculateInstallments(totalValue, installments)
-  if (installmentValue < 10) {
-    errors.push('O valor mínimo por parcela é R$ 10,00')
+
+  if (!config.installments || config.installments < INSTALLMENT_CONFIG.MIN_INSTALLMENTS) {
+    errors.push(`Número mínimo de parcelas: ${INSTALLMENT_CONFIG.MIN_INSTALLMENTS}`)
   }
-  
-  if (!card || !card.id) {
-    errors.push('Selecione um cartão de crédito válido')
+
+  if (config.installments > INSTALLMENT_CONFIG.MAX_INSTALLMENTS) {
+    errors.push(`Número máximo de parcelas: ${INSTALLMENT_CONFIG.MAX_INSTALLMENTS}`)
+  }
+
+  if (config.totalValue && config.installments) {
+    const { installmentValue } = calculateInstallments(config.totalValue, config.installments)
+    if (installmentValue < INSTALLMENT_CONFIG.MIN_INSTALLMENT_VALUE) {
+      errors.push(`Valor mínimo por parcela: R$ ${INSTALLMENT_CONFIG.MIN_INSTALLMENT_VALUE.toFixed(2)}`)
+    }
+  }
+
+  if (!config.card || !config.card.id) {
+    errors.push('Cartão de crédito é obrigatório')
+  }
+
+  if (!config.purchaseDate) {
+    errors.push('Data da compra é obrigatória')
+  } else {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const purchase = new Date(config.purchaseDate)
+    purchase.setHours(0, 0, 0, 0)
+    
+    if (purchase > today) {
+      errors.push('Data da compra não pode ser no futuro')
+    }
   }
 
   return {
     isValid: errors.length === 0,
     errors
   }
+}
+
+/**
+ * Cria uma instância de parcela
+ * @param {Object} baseTransaction - Dados base da transação
+ * @param {Object} installmentConfig - Configuração do parcelamento
+ * @param {number} index - Índice da parcela (0-based)
+ * @param {Date} invoiceDate - Data da fatura desta parcela
+ * @param {number} installmentValue - Valor desta parcela específica
+ * @param {string} installmentId - ID da série
+ * @returns {Object} - Dados da parcela
+ */
+export const createInstallmentInstance = (
+  baseTransaction,
+  installmentConfig,
+  index,
+  invoiceDate,
+  installmentValue,
+  installmentId
+) => {
+  // eslint-disable-next-line no-unused-vars
+  const { id, value, ...cleanBaseTransaction } = baseTransaction
+
+  return {
+    ...cleanBaseTransaction,
+    value: installmentValue,
+    date: new Date(installmentConfig.purchaseDate), // Data da compra original
+    fiscalMonth: formatFiscalMonth(invoiceDate), // Mês fiscal baseado na fatura
+    installmentId,
+    installmentIndex: index + 1, // 1-based para o usuário
+    installmentTotal: installmentConfig.installments,
+    installmentValue: installmentValue,
+    totalValue: installmentConfig.totalValue,
+    originalPurchaseDate: installmentConfig.purchaseDate,
+    isInstallment: true,
+    // Modificar descrição para incluir parcela
+    description: `${baseTransaction.description} (${index + 1}/${installmentConfig.installments})`,
+    createdAt: new Date()
+  }
+}
+
+/**
+ * Gera todas as parcelas de uma compra
+ * @param {Object} baseTransaction - Transação base
+ * @param {Object} installmentConfig - Configuração do parcelamento
+ * @returns {Array} - Array com todas as parcelas
+ */
+export const generateInstallmentSeries = (baseTransaction, installmentConfig) => {
+  const validation = validateInstallmentConfig(installmentConfig)
+  if (!validation.isValid) {
+    throw new Error(`Configuração inválida: ${validation.errors.join(', ')}`)
+  }
+
+  const installmentId = generateInstallmentId()
+  const { values } = calculateInstallments(installmentConfig.totalValue, installmentConfig.installments)
+  const invoiceDates = getInstallmentDates(
+    installmentConfig.purchaseDate,
+    installmentConfig.card,
+    installmentConfig.installments
+  )
+
+  const installments = []
+
+  for (let i = 0; i < installmentConfig.installments; i++) {
+    const installment = createInstallmentInstance(
+      baseTransaction,
+      installmentConfig,
+      i,
+      invoiceDates[i],
+      values[i],
+      installmentId
+    )
+    installments.push(installment)
+  }
+
+  return installments
+}
+
+/**
+ * Obtém informações resumidas de uma série de parcelas
+ * @param {string} installmentId - ID da série
+ * @param {Array} allTransactions - Todas as transações
+ * @returns {Object} - Informações da série
+ */
+export const getInstallmentSeriesInfo = (installmentId, allTransactions) => {
+  const series = getInstallmentSeries(installmentId, allTransactions)
+  
+  if (series.length === 0) {
+    return null
+  }
+
+  const first = series[0]
+  const totalPaid = series.reduce((sum, t) => sum + t.value, 0)
+
+  return {
+    installmentId,
+    totalInstallments: first.installmentTotal,
+    currentInstallments: series.length,
+    totalValue: first.totalValue,
+    totalPaid,
+    remaining: first.totalValue - totalPaid,
+    originalDate: first.originalPurchaseDate,
+    description: first.description.replace(/\s*\(\d+\/\d+\)$/, ''), // Remover sufixo de parcela
+    card: first.cardId
+  }
+}
+
+/**
+ * Cancela parcelas restantes de uma série
+ * @param {string} installmentId - ID da série
+ * @param {number} fromIndex - A partir de qual índice cancelar (1-based)
+ * @param {Array} allTransactions - Todas as transações
+ * @param {Object} db - Instância do Firestore
+ * @param {string} collectionPath - Caminho da coleção
+ * @returns {Promise<number>} - Número de parcelas canceladas
+ */
+export const cancelRemainingInstallments = async (
+  installmentId,
+  fromIndex,
+  allTransactions,
+  db,
+  collectionPath
+) => {
+  const { writeBatch, doc } = await import('firebase/firestore')
+  
+  const series = getInstallmentSeries(installmentId, allTransactions)
+  const toCancel = series.filter(t => t.installmentIndex >= fromIndex)
+
+  if (toCancel.length === 0) {
+    return 0
+  }
+
+  const batch = writeBatch(db)
+
+  toCancel.forEach(installment => {
+    const docRef = doc(db, collectionPath, installment.id)
+    batch.delete(docRef)
+  })
+
+  await batch.commit()
+  return toCancel.length
+}
+
+/**
+ * Obtém a descrição legível de um parcelamento
+ * @param {Object} installmentConfig - Configuração do parcelamento
+ * @returns {string} - Descrição do parcelamento
+ */
+export const getInstallmentDescription = (installmentConfig) => {
+  if (!installmentConfig) return ''
+
+  const { values } = calculateInstallments(installmentConfig.totalValue, installmentConfig.installments)
+  const hasRemainder = values[0] !== values[values.length - 1]
+
+  if (hasRemainder) {
+    return `${installmentConfig.installments}x de R$ ${values[0].toFixed(2)} (última: R$ ${values[values.length - 1].toFixed(2)})`
+  }
+
+  return `${installmentConfig.installments}x de R$ ${values[0].toFixed(2)}`
+}
+
+/**
+ * Formata uma parcela para exibição
+ * @param {Object} installment - Dados da parcela
+ * @returns {string} - Texto formatado
+ */
+export const formatInstallmentDisplay = (installment) => {
+  if (!isInstallmentTransaction(installment)) {
+    return installment.description
+  }
+
+  return `${installment.description} (${installment.installmentIndex}/${installment.installmentTotal})`
 }
