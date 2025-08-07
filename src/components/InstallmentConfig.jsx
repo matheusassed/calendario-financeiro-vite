@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { calculateInstallments, getInstallmentDates, validateInstallment } from '../utils/installments'
+import {
+  calculateInstallments,
+  getInstallmentDates,
+  validateInstallmentConfig,
+} from '../utils/installments'
 
 /**
  * Componente para configurar parcelamento de compras no cartão de crédito
@@ -15,14 +19,14 @@ export function InstallmentConfig({
   totalValue,
   selectedCard,
   purchaseDate,
-  disabled = false
+  disabled = false,
 }) {
   const [isInstallment, setIsInstallment] = useState(false)
-  const [installments, setInstallments] = useState(1)
+  const [installments, setInstallments] = useState(2)
   const [validation, setValidation] = useState({ isValid: true, errors: [] })
 
   // Calcula o valor de cada parcela
-  const installmentValue = isInstallment 
+  const installmentValue = isInstallment
     ? calculateInstallments(totalValue, installments)
     : totalValue
 
@@ -31,37 +35,51 @@ export function InstallmentConfig({
   useEffect(() => {
     if (isInstallment && selectedCard && purchaseDate) {
       try {
-        const dates = getInstallmentDates(purchaseDate, selectedCard, installments)
-        setInstallmentPreview(dates.map((date, index) => ({
-          date,
-          value: index === installments - 1 
-            ? totalValue - (installmentValue * (installments - 1))
-            : installmentValue
-        })))
+        const dates = getInstallmentDates(
+          purchaseDate,
+          selectedCard,
+          installments,
+        )
+        setInstallmentPreview(
+          dates.map((date, index) => ({
+            date,
+            value:
+              index === installments - 1
+                ? totalValue - installmentValue.installmentValue * (installments - 1)
+                : installmentValue.installmentValue,
+          })),
+        )
       } catch (error) {
         console.error('Erro ao gerar preview de parcelas:', error)
       }
     } else {
       setInstallmentPreview([])
     }
-  }, [isInstallment, installments, selectedCard, purchaseDate, totalValue, installmentValue])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInstallment, installments, selectedCard, purchaseDate, totalValue])
 
   // Validação quando os parâmetros mudam
   useEffect(() => {
     if (isInstallment) {
-      const validation = validateInstallment(totalValue, installments, selectedCard)
+      const validation = validateInstallmentConfig({
+        totalValue,
+        installments,
+        card: selectedCard,
+        purchaseDate,
+      })
       setValidation(validation)
       onInstallmentChange({
         isInstallment,
         isValid: validation.isValid,
         installments,
         totalValue,
-        installmentValue
+        installmentValue,
       })
     } else {
       onInstallmentChange({ isInstallment: false, isValid: true })
     }
-  }, [isInstallment, installments, totalValue, selectedCard, onInstallmentChange, installmentValue])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInstallment, installments, totalValue, selectedCard, onInstallmentChange])
 
   const handleInstallmentsChange = (e) => {
     const value = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 24)
@@ -77,19 +95,19 @@ export function InstallmentConfig({
             checked={isInstallment}
             onChange={(e) => setIsInstallment(e.target.checked)}
             disabled={disabled || !selectedCard}
-          />
-          {' '}Parcelar compra
+          />{' '}
+          Parcelar compra
         </label>
       </div>
 
       {isInstallment && (
         <div className="installment-fields">
           <div className="form-group">
-            <label>Número de parcelas (1-24)</label>
+            <label>Número de parcelas (2-48)</label>
             <input
               type="number"
-              min="1"
-              max="24"
+              min="2"
+              max="48"
               value={installments}
               onChange={handleInstallmentsChange}
               disabled={disabled}
@@ -100,9 +118,9 @@ export function InstallmentConfig({
             <label>Valor por parcela</label>
             <input
               type="text"
-              value={installmentValue.toLocaleString('pt-BR', {
+              value={installmentValue.values[0].toLocaleString('pt-BR', {
                 style: 'currency',
-                currency: 'BRL'
+                currency: 'BRL',
               })}
               readOnly
             />
@@ -125,8 +143,9 @@ export function InstallmentConfig({
                     {item.date.toLocaleDateString('pt-BR')}:{' '}
                     {item.value.toLocaleString('pt-BR', {
                       style: 'currency',
-                      currency: 'BRL'
-                    })} ({index + 1}/{installments})
+                      currency: 'BRL',
+                    })}{' '}
+                    ({index + 1}/{installments})
                   </li>
                 ))}
               </ul>

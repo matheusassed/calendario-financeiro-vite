@@ -22,7 +22,11 @@ import {
 } from '../utils/recurrence'
 import { validateRecurrenceRule } from '../utils/recurrence'
 import { InstallmentConfig } from '../components/InstallmentConfig'
-import { getInstallmentDates } from '../utils/installments'
+import {
+  generateInstallmentSeries,
+  validateInstallmentConfig,
+  isInstallmentTransaction,
+} from '../utils/installments'
 
 export function ExpenseForm({
   onSave,
@@ -51,13 +55,8 @@ export function ExpenseForm({
   const [loading, setLoading] = useState(false)
   const [recurrenceRule, setRecurrenceRule] = useState(null)
   const [recurrenceLoading, setRecurrenceLoading] = useState(false)
-  const [installmentConfig, setInstallmentConfig] = useState({
-    isInstallment: false,
-    isValid: true,
-    installments: 1,
-    totalValue: 0,
-    installmentValue: 0
-  })
+  const [installmentConfig, setInstallmentConfig] = useState(null)
+  const [installmentLoading, setInstallmentLoading] = useState(false)
 
   const isEditing = !!initialData
 
@@ -115,7 +114,11 @@ export function ExpenseForm({
   }, [])
 
   const handleInstallmentChange = useCallback((config) => {
-    setInstallmentConfig(config)
+    setInstallmentConfig({
+      ...config,
+      purchaseDate: formData.date,
+      card: creditCards.find((card) => card.id === formData.cardId),
+    })
   }, [])
 
   const handleChange = (e) => {
@@ -132,9 +135,28 @@ export function ExpenseForm({
     setError('')
     setLoading(true)
 
+    if (isEditing && initialData && isInstallmentTransaction(initialData)) {
+      // Para parcelas, só permitir editar descrição e categoria
+      const allowedFields = ['description', 'categoryId']
+      const hasDisallowedChanges = Object.keys(formData).some(
+        (key) =>
+          !allowedFields.includes(key) &&
+          formData[key] !== initialData[key] &&
+          key !== 'fiscalMonth', // fiscalMonth pode mudar devido à categoria
+      )
+
+      if (hasDisallowedChanges) {
+        setError(
+          'Apenas descrição e categoria podem ser alteradas em parcelas.',
+        )
+        return
+      }
+    }
+
     const loadingToast = toast.loading(
       isEditing ? 'Atualizando despesa...' : 'Salvando despesa...',
     )
+
     try {
       const transactionDate = new Date(formData.date + 'T12:00:00')
       const transactionValue = parseFloat(formData.value)
@@ -149,7 +171,7 @@ export function ExpenseForm({
         paymentMethod: formData.paymentMethod,
         categoryId: formData.categoryId,
         cardId: formData.paymentMethod === 'credit' ? formData.cardId : '',
-        invoiceId: null, // Será preenchido se for uma despesa de cartão
+        invoiceId: null,
       }
 
       if (recurrenceRule && !isEditing) {
@@ -202,129 +224,198 @@ export function ExpenseForm({
         await updateDoc(docRef, dataToSave)
         toast.success('Despesa atualizada com sucesso!', { id: loadingToast })
       } else if (formData.paymentMethod === 'credit' && formData.cardId) {
-        // LÓGICA DE FATURA
-        const card = creditCards.find((c) => c.id === formData.cardId)
-        
-        // Handle installment payments
-        if (installmentConfig.isInstallment && installmentConfig.isValid) {
-          setRecurrenceLoading(true)
-          const batch = writeBatch(db)
-          const baseTransaction = {
-            userId: user.uid,
-            type: 'expense',
-            description: formData.description,
-            value: installmentConfig.installmentValue,
-            fiscalMonth: formData.fiscalMonth,
-            paymentMethod: formData.paymentMethod,
-            categoryId: formData.categoryId,
-            cardId: formData.cardId,
-            invoiceId: null
+        // LÓGICA DE CARTÃO DE CRÉDITO COM PARCELAMENTO
+        if (installmentConfig) {
+          // === CRIAR PARCELAMENTO ===
+          setInstallmentLoading(true)
+
+          const validation = validateInstallmentConfig(installmentConfig)
+          if (!validation.isValid) {
+            setError(
+              `Configuração de parcelamento inválida: ${validation.errors.join(', ')}`,
+            )
+            return
           }
 
-          // Generate installment dates
-          const dates = getInstallmentDates(
-            new Date(formData.date + 'T12:00:00'),
-            card,
-            installmentConfig.installments
-          )
+          const card = creditCards.find((c) => c.id === formData.cardId)
+          if (!card) {
+            setError('Cartão de crédito não encontrado')
+            return
+          }
 
-          // Create all installment transactions
-          dates.forEach((date, index) => {
-            // Calculate correct invoice month for each installment
-            let invoiceMonthDate = new Date(date)
-            if (invoiceMonthDate.getDate() > card.invoiceCloseDay) {
+          // Gerar todas as parcelas
+          const installments = generateInstallmentSeries(dataToSave, {
+            ...installmentConfig,
+            card: card,
+          })
+
+          console.log(`Criando ${installments.length} parcelas:`, installments)
+
+          // Criar batch para todas as parcelas e suas faturas
+          const batch = writeBatch(db)
+          const invoiceUpdates = new Map() // Para agrupar atualizações por fatura
+
+          for (const installment of installments) {
+            // Determinar em qual fatura esta parcela vai
+            let invoiceMonthDate = new Date(installment.date)
+            if (installment.date.getDate() > card.invoiceCloseDay) {
               invoiceMonthDate.setMonth(invoiceMonthDate.getMonth() + 1)
             }
             const invoiceMonthStr = formatFiscalMonth(invoiceMonthDate)
 
-            const installmentData = {
-              ...baseTransaction,
-              date: date,
-              installmentId: `inst_${Date.now()}`,
-              installmentIndex: index + 1,
-              installmentTotal: installmentConfig.installments,
-              installmentValue: index === installmentConfig.installments - 1 
-                ? installmentConfig.totalValue - (installmentConfig.installmentValue * (installmentConfig.installments - 1))
-                : installmentConfig.installmentValue,
-              totalValue: installmentConfig.totalValue,
-              isInstallment: true,
-              description: `${formData.description} (${index + 1}/${installmentConfig.installments})`,
-              fiscalMonth: invoiceMonthStr
+            // Verificar se a fatura já existe
+            const invoiceQuery = query(
+              collection(db, `artifacts/${appId}/users/${user.uid}/invoices`),
+              where('cardId', '==', formData.cardId),
+              where('month', '==', invoiceMonthStr),
+            )
+            const querySnapshot = await getDocs(invoiceQuery)
+
+            let invoiceId
+            let currentInvoiceTotal = 0
+
+            if (querySnapshot.empty) {
+              // Criar nova fatura
+              const newInvoiceRef = doc(
+                collection(db, `artifacts/${appId}/users/${user.uid}/invoices`),
+              )
+              invoiceId = newInvoiceRef.id
+
+              const closeDate = new Date(
+                invoiceMonthDate.getFullYear(),
+                invoiceMonthDate.getMonth(),
+                card.invoiceCloseDay,
+              )
+              const dueDate = new Date(
+                invoiceMonthDate.getFullYear(),
+                invoiceMonthDate.getMonth(),
+                card.invoiceDueDay,
+              )
+
+              // Verificar se já temos atualizações pendentes para esta fatura
+              if (invoiceUpdates.has(invoiceId)) {
+                currentInvoiceTotal = invoiceUpdates.get(invoiceId).total
+              }
+
+              batch.set(newInvoiceRef, {
+                cardId: formData.cardId,
+                month: invoiceMonthStr,
+                total: currentInvoiceTotal + installment.value,
+                closeDate: closeDate,
+                dueDate: dueDate,
+                status: 'Aberta',
+                createdAt: serverTimestamp(),
+              })
+
+              invoiceUpdates.set(invoiceId, {
+                ref: newInvoiceRef,
+                total: currentInvoiceTotal + installment.value,
+                isNew: true,
+              })
+            } else {
+              // Atualizar fatura existente
+              const invoiceDoc = querySnapshot.docs[0]
+              invoiceId = invoiceDoc.id
+              currentInvoiceTotal = invoiceDoc.data().total || 0
+
+              // Verificar se já temos atualizações pendentes para esta fatura
+              if (invoiceUpdates.has(invoiceId)) {
+                currentInvoiceTotal = invoiceUpdates.get(invoiceId).total
+              }
+
+              const newTotal = currentInvoiceTotal + installment.value
+              batch.update(invoiceDoc.ref, { total: newTotal })
+
+              invoiceUpdates.set(invoiceId, {
+                ref: invoiceDoc.ref,
+                total: newTotal,
+                isNew: false,
+              })
             }
 
-            const docRef = doc(
-              collection(db, `artifacts/${appId}/users/${user.uid}/transactions`)
+            // Adicionar a parcela com o ID da fatura
+            const installmentData = {
+              ...installment,
+              invoiceId: invoiceId,
+            }
+
+            const newTransactionRef = doc(
+              collection(
+                db,
+                `artifacts/${appId}/users/${user.uid}/transactions`,
+              ),
             )
-            batch.set(docRef, installmentData)
-          })
+            batch.set(newTransactionRef, installmentData)
+          }
 
           await batch.commit()
-          setRecurrenceLoading(false)
-          toast.success(`${installmentConfig.installments} parcelas criadas com sucesso!`, { id: loadingToast })
-          if (onSave) onSave()
-          return
-        }
-        let invoiceMonthDate = new Date(transactionDate)
-        if (transactionDate.getDate() > card.invoiceCloseDay) {
-          invoiceMonthDate.setMonth(invoiceMonthDate.getMonth() + 1)
-        }
-        const invoiceMonthStr = formatFiscalMonth(invoiceMonthDate)
+          setInstallmentLoading(false)
 
-        // Verifica se a fatura já existe
-        const invoiceQuery = query(
-          collection(db, `artifacts/${appId}/users/${user.uid}/invoices`),
-          where('cardId', '==', formData.cardId),
-          where('month', '==', invoiceMonthStr),
-        )
-        const querySnapshot = await getDocs(invoiceQuery)
-
-        const batch = writeBatch(db)
-        let invoiceId
-
-        if (querySnapshot.empty) {
-          // Cria uma nova fatura
-          const newInvoiceRef = doc(
-            collection(db, `artifacts/${appId}/users/${user.uid}/invoices`),
+          toast.success(
+            `Compra parcelada em ${installments.length}x criada com sucesso!`,
+            { id: loadingToast },
           )
-          invoiceId = newInvoiceRef.id
-          const closeDate = new Date(
-            invoiceMonthDate.getFullYear(),
-            invoiceMonthDate.getMonth(),
-            card.invoiceCloseDay,
-          )
-          const dueDate = new Date(
-            invoiceMonthDate.getFullYear(),
-            invoiceMonthDate.getMonth(),
-            card.invoiceDueDay,
-          )
-
-          batch.set(newInvoiceRef, {
-            cardId: formData.cardId,
-            month: invoiceMonthStr,
-            total: transactionValue,
-            closeDate: closeDate,
-            dueDate: dueDate,
-            status: 'Aberta',
-            createdAt: serverTimestamp(),
-          })
         } else {
-          // Atualiza a fatura existente
-          const invoiceDoc = querySnapshot.docs[0]
-          invoiceId = invoiceDoc.id
-          batch.update(invoiceDoc.ref, { total: increment(transactionValue) })
+          // === COMPRA SIMPLES NO CARTÃO (lógica existente) ===
+          const card = creditCards.find((c) => c.id === formData.cardId)
+          let invoiceMonthDate = new Date(transactionDate)
+          if (transactionDate.getDate() > card.invoiceCloseDay) {
+            invoiceMonthDate.setMonth(invoiceMonthDate.getMonth() + 1)
+          }
+          const invoiceMonthStr = formatFiscalMonth(invoiceMonthDate)
+
+          const invoiceQuery = query(
+            collection(db, `artifacts/${appId}/users/${user.uid}/invoices`),
+            where('cardId', '==', formData.cardId),
+            where('month', '==', invoiceMonthStr),
+          )
+          const querySnapshot = await getDocs(invoiceQuery)
+
+          const batch = writeBatch(db)
+          let invoiceId
+
+          if (querySnapshot.empty) {
+            const newInvoiceRef = doc(
+              collection(db, `artifacts/${appId}/users/${user.uid}/invoices`),
+            )
+            invoiceId = newInvoiceRef.id
+            const closeDate = new Date(
+              invoiceMonthDate.getFullYear(),
+              invoiceMonthDate.getMonth(),
+              card.invoiceCloseDay,
+            )
+            const dueDate = new Date(
+              invoiceMonthDate.getFullYear(),
+              invoiceMonthDate.getMonth(),
+              card.invoiceDueDay,
+            )
+
+            batch.set(newInvoiceRef, {
+              cardId: formData.cardId,
+              month: invoiceMonthStr,
+              total: transactionValue,
+              closeDate: closeDate,
+              dueDate: dueDate,
+              status: 'Aberta',
+              createdAt: serverTimestamp(),
+            })
+          } else {
+            const invoiceDoc = querySnapshot.docs[0]
+            invoiceId = invoiceDoc.id
+            batch.update(invoiceDoc.ref, { total: increment(transactionValue) })
+          }
+
+          dataToSave.invoiceId = invoiceId
+          const newTransactionRef = doc(
+            collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
+          )
+          batch.set(newTransactionRef, dataToSave)
+
+          await batch.commit()
+          toast.success('Despesa de cartão adicionada à fatura!', {
+            id: loadingToast,
+          })
         }
-
-        // Adiciona a transação com o ID da fatura
-        dataToSave.invoiceId = invoiceId
-        const newTransactionRef = doc(
-          collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
-        )
-        batch.set(newTransactionRef, dataToSave)
-
-        await batch.commit()
-        toast.success('Despesa de cartão adicionada à fatura!', {
-          id: loadingToast,
-        })
       } else {
         await addDoc(
           collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
@@ -340,6 +431,7 @@ export function ExpenseForm({
       setError('Ocorreu um erro ao salvar a despesa.')
     } finally {
       setLoading(false)
+      setInstallmentLoading(false)
     }
   }
 
@@ -455,14 +547,32 @@ export function ExpenseForm({
           />
         </div>
 
-        {formData.paymentMethod === 'credit' && (
-          <InstallmentConfig
-            onInstallmentChange={handleInstallmentChange}
-            totalValue={parseFloat(formData.value) || 0}
-            selectedCard={creditCards.find(c => c.id === formData.cardId)}
-            purchaseDate={new Date(formData.date + 'T12:00:00')}
-            disabled={isEditing}
-          />
+        {formData.paymentMethod === 'credit' &&
+          formData.cardId &&
+          !isEditing && (
+            <InstallmentConfig
+              onInstallmentChange={handleInstallmentChange}
+              totalValue={parseFloat(formData.value) || 0}
+              selectedCard={creditCards.find((c) => c.id === formData.cardId)}
+              purchaseDate={new Date(formData.date + 'T12:00:00')}
+              disabled={isEditing || !!recurrenceRule}
+            />
+          )}
+
+        {isEditing && initialData && isInstallmentTransaction(initialData) && (
+          <div className="installment-edit-notice">
+            <Package size={16} />
+            <div>
+              <strong>
+                Parcela {initialData.installmentIndex}/
+                {initialData.installmentTotal}
+              </strong>
+              <p>
+                Esta é uma parcela de compra parcelada. Apenas descrição e
+                categoria podem ser alteradas.
+              </p>
+            </div>
+          </div>
         )}
 
         <RecurrenceConfig
@@ -483,10 +593,12 @@ export function ExpenseForm({
           <button
             type="submit"
             className="btn-primary"
-            disabled={loading || recurrenceLoading}
+            disabled={loading || recurrenceLoading || installmentLoading}
           >
-            {loading
-              ? 'Salvando...'
+            {loading || installmentLoading
+              ? installmentConfig
+                ? 'Criando Parcelas...'
+                : 'Salvando...'
               : isEditing
                 ? 'Salvar Alterações'
                 : 'Salvar Despesa'}
