@@ -17,79 +17,116 @@ export const INSTALLMENT_CONFIG = {
  * Calcula o valor de cada parcela
  * @param {number} totalValue - Valor total da compra
  * @param {number} installments - Número de parcelas
- * @returns {number} Valor de cada parcela
+ * @returns {Object} - {installmentValue: number, remainder: number, values: number[]}
  */
 export const calculateInstallments = (totalValue, installments) => {
-  if (installments <= 0) return 0
-  const value = totalValue / installments
-  // Arredonda para 2 casas decimais e trata casos de divisão não exata
-  const rounded = Math.round(value * 100) / 100
-  return installments === 1 ? totalValue : rounded
+  if (!totalValue || !installments || installments < 1) {
+    return { installmentValue: 0, remainder: 0, values: [] }
+  }
+
+  // Calcular valor base da parcela (sem arredondamento)
+  const baseValue = totalValue / installments
+  const installmentValue = Math.floor(baseValue * 100) / 100 // Truncar para 2 decimais
+  const remainder = totalValue - (installmentValue * installments)
+
+  // Criar array com valores das parcelas
+  const values = Array(installments).fill(installmentValue)
+  
+  // Distribuir o resto nas últimas parcelas (centavos)
+  const remainderCents = Math.round(remainder * 100)
+  if (remainder > 0) {
+    for (let i = installments - remainderCents; i < installments; i++) {
+      values[i] += 0.01
+    }
+  }
+
+  return {
+    installmentValue: installmentValue,
+    remainder: remainderCents || 0,
+    values: values.map(v => Math.round(v * 100) / 100) // Garantir 2 decimais
+  }
 }
 
 /**
- * Gera as datas das parcelas baseado na data de compra e ciclo do cartão
- * @param {Date} purchaseDate - Data da compra original
- * @param {Object} card - Objeto do cartão de crédito
+ * Calcula as datas das faturas para cada parcela
+ * @param {Date} purchaseDate - Data da compra
+ * @param {Object} card - Dados do cartão de crédito
  * @param {number} installments - Número de parcelas
- * @returns {Date[]} Array de datas das parcelas
+ * @returns {Date[]} - Array com as datas das faturas
  */
 export const getInstallmentDates = (purchaseDate, card, installments) => {
-  if (!card || !card.invoiceCloseDay) {
-    throw new Error('Cartão inválido ou sem dia de fechamento definido')
+  if (!purchaseDate || !card || !installments) {
+    return []
   }
 
   const dates = []
-  const baseDate = new Date(purchaseDate)
-  
-  for (let i = 0; i < installments; i++) {
-    const date = new Date(baseDate)
-    date.setMonth(date.getMonth() + i)
-    
-    // Ajusta para o mês de fechamento correto
-    if (date.getDate() > card.invoiceCloseDay) {
-      date.setMonth(date.getMonth() + 1)
-    }
-    date.setDate(card.invoiceCloseDay)
-    
-    // Ensure we're using the correct fiscal month for the invoice
-    const invoiceMonthDate = new Date(date)
-    if (invoiceMonthDate.getDate() > card.invoiceCloseDay) {
-      invoiceMonthDate.setMonth(invoiceMonthDate.getMonth() + 1)
-    }
-    invoiceMonthDate.setDate(card.invoiceCloseDay)
+  let currentDate = new Date(purchaseDate)
 
-    dates.push(invoiceMonthDate)
+  // Determinar em qual fatura a primeira parcela vai entrar
+  let firstInvoiceMonth = new Date(currentDate)
+  
+  // Se a compra foi depois do fechamento, vai para a próxima fatura
+  if (currentDate.getDate() > card.invoiceCloseDay) {
+    firstInvoiceMonth.setMonth(firstInvoiceMonth.getMonth() + 1)
+  }
+
+  // Gerar datas das próximas faturas
+  for (let i = 0; i < installments; i++) {
+    const invoiceDate = new Date(firstInvoiceMonth)
+    invoiceDate.setMonth(invoiceDate.getMonth() + i)
+    dates.push(invoiceDate)
   }
 
   return dates
 }
 
 /**
- * Valida os parâmetros de um parcelamento
- * @param {number} totalValue - Valor total
- * @param {number} installments - Número de parcelas
- * @param {Object} card - Cartão de crédito
- * @returns {Object} { isValid: boolean, errors: string[] }
+ * Valida uma configuração de parcelamento
+ * @param {Object} config - Configuração do parcelamento
+ * @returns {Object} - {isValid: boolean, errors: string[]}
  */
-export const validateInstallment = (totalValue, installments, card) => {
+export const validateInstallmentConfig = (config) => {
   const errors = []
-  
-  if (totalValue <= 0) {
-    errors.push('O valor total deve ser maior que zero')
+
+  if (!config) {
+    errors.push('Configuração de parcelamento é obrigatória')
+    return { isValid: false, errors }
   }
-  
-  if (installments < 1 || installments > 24) {
-    errors.push('O número de parcelas deve estar entre 1 e 24')
+
+  if (!config.totalValue || config.totalValue <= 0) {
+    errors.push('Valor total deve ser maior que zero')
   }
-  
-  const installmentValue = calculateInstallments(totalValue, installments)
-  if (installmentValue < 10) {
-    errors.push('O valor mínimo por parcela é R$ 10,00')
+
+  if (!config.installments || config.installments < INSTALLMENT_CONFIG.MIN_INSTALLMENTS) {
+    errors.push(`Número mínimo de parcelas: ${INSTALLMENT_CONFIG.MIN_INSTALLMENTS}`)
   }
-  
-  if (!card || !card.id) {
-    errors.push('Selecione um cartão de crédito válido')
+
+  if (config.installments > INSTALLMENT_CONFIG.MAX_INSTALLMENTS) {
+    errors.push(`Número máximo de parcelas: ${INSTALLMENT_CONFIG.MAX_INSTALLMENTS}`)
+  }
+
+  if (config.totalValue && config.installments) {
+    const { installmentValue } = calculateInstallments(config.totalValue, config.installments)
+    if (installmentValue < INSTALLMENT_CONFIG.MIN_INSTALLMENT_VALUE) {
+      errors.push(`Valor mínimo por parcela: R$ ${INSTALLMENT_CONFIG.MIN_INSTALLMENT_VALUE.toFixed(2)}`)
+    }
+  }
+
+  if (!config.card || !config.card.id) {
+    errors.push('Cartão de crédito é obrigatório')
+  }
+
+  if (!config.purchaseDate) {
+    errors.push('Data da compra é obrigatória')
+  } else {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const purchase = new Date(config.purchaseDate)
+    purchase.setHours(0, 0, 0, 0)
+    
+    if (purchase > today) {
+      errors.push('Data da compra não pode ser no futuro')
+    }
   }
 
   return {
