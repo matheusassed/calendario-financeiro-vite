@@ -31,7 +31,7 @@ export const calculateInstallments = (totalValue, installments) => {
 
   // Criar array com valores das parcelas
   const values = Array(installments).fill(installmentValue)
-  
+
   // Distribuir o resto nas últimas parcelas (centavos)
   const remainderCents = Math.round(remainder * 100)
   if (remainder > 0) {
@@ -64,7 +64,7 @@ export const getInstallmentDates = (purchaseDate, card, installments) => {
 
   // Determinar em qual fatura a primeira parcela vai entrar
   let firstInvoiceMonth = new Date(currentDate)
-  
+
   // Se a compra foi depois do fechamento, vai para a próxima fatura
   if (currentDate.getDate() > card.invoiceCloseDay) {
     firstInvoiceMonth.setMonth(firstInvoiceMonth.getMonth() + 1)
@@ -152,7 +152,7 @@ export const validateInstallmentConfig = (config) => {
     today.setHours(0, 0, 0, 0)
     const purchase = new Date(config.purchaseDate)
     purchase.setHours(0, 0, 0, 0)
-    
+
     if (purchase > today) {
       errors.push('Data da compra não pode ser no futuro')
     }
@@ -188,7 +188,7 @@ export const createInstallmentInstance = (
   return {
     ...cleanBaseTransaction,
     value: installmentValue,
-    date: new Date(installmentConfig.purchaseDate), // Data da compra original
+    date: new Date(invoiceDate), // Usar data da fatura para a parcela
     fiscalMonth: formatFiscalMonth(invoiceDate), // Mês fiscal baseado na fatura
     installmentId,
     installmentIndex: index + 1, // 1-based para o usuário
@@ -216,6 +216,24 @@ export const generateInstallmentSeries = (baseTransaction, installmentConfig) =>
   }
 
   const installmentId = generateInstallmentId()
+
+  // Criar transação principal (compra) sem valor contabilizado
+  const brlStringTotalValue = installmentConfig.totalValue.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  })
+  const brlStringInstallmentValue = installmentConfig.installmentValue.installmentValue.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  })
+  const mainTransaction = {
+    ...baseTransaction,
+    value: 0,
+    isInstallmentMaster: true,
+    installmentId,
+    installmentTotal: installmentConfig.installments,
+    description: `${baseTransaction.description} (Compra Parcelada) - ${brlStringTotalValue} em ${installmentConfig.installments}x de ${brlStringInstallmentValue}`,
+  }
   const { values } = calculateInstallments(installmentConfig.totalValue, installmentConfig.installments)
   const invoiceDates = getInstallmentDates(
     installmentConfig.purchaseDate,
@@ -237,7 +255,10 @@ export const generateInstallmentSeries = (baseTransaction, installmentConfig) =>
     installments.push(installment)
   }
 
-  return installments
+  return {
+    mainTransaction,
+    installments
+  }
 }
 
 /**
@@ -248,7 +269,7 @@ export const generateInstallmentSeries = (baseTransaction, installmentConfig) =>
  */
 export const getInstallmentSeriesInfo = (installmentId, allTransactions) => {
   const series = getInstallmentSeries(installmentId, allTransactions)
-  
+
   if (series.length === 0) {
     return null
   }
@@ -286,7 +307,7 @@ export const cancelRemainingInstallments = async (
   collectionPath
 ) => {
   const { writeBatch, doc } = await import('firebase/firestore')
-  
+
   const series = getInstallmentSeries(installmentId, allTransactions)
   const toCancel = series.filter(t => t.installmentIndex >= fromIndex)
 
