@@ -119,7 +119,7 @@ export function ExpenseForm({
       purchaseDate: formData.date,
       card: creditCards.find((card) => card.id === formData.cardId),
     })
-  }, [])
+  }, [formData.date, formData.cardId, creditCards])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -225,7 +225,7 @@ export function ExpenseForm({
         toast.success('Despesa atualizada com sucesso!', { id: loadingToast })
       } else if (formData.paymentMethod === 'credit' && formData.cardId) {
         // LÓGICA DE CARTÃO DE CRÉDITO COM PARCELAMENTO
-        if (installmentConfig) {
+        if (installmentConfig.isInstallment) {
           // === CRIAR PARCELAMENTO ===
           setInstallmentLoading(true)
 
@@ -234,6 +234,7 @@ export function ExpenseForm({
             setError(
               `Configuração de parcelamento inválida: ${validation.errors.join(', ')}`,
             )
+            toast.error(`Configuração de parcelamento inválida: ${validation.errors.join(', ')}`, { id: loadingToast })
             return
           }
 
@@ -243,18 +244,25 @@ export function ExpenseForm({
             return
           }
 
-          // Gerar todas as parcelas
-          const installments = generateInstallmentSeries(dataToSave, {
+          // Gerar transação principal e parcelas
+          const { mainTransaction, installments } = generateInstallmentSeries(dataToSave, {
             ...installmentConfig,
             card: card,
           })
 
-          console.log(`Criando ${installments.length} parcelas:`, installments)
+          console.log(`Criando 1 transação principal e ${installments.length} parcelas`)
 
-          // Criar batch para todas as parcelas e suas faturas
+          // Criar batch para todas as transações
           const batch = writeBatch(db)
           const invoiceUpdates = new Map() // Para agrupar atualizações por fatura
 
+          // Primeiro salva a transação principal (compra)
+          const mainTransactionRef = doc(
+            collection(db, `artifacts/${appId}/users/${user.uid}/transactions`)
+          )
+          batch.set(mainTransactionRef, mainTransaction)
+
+          // Depois salva as parcelas
           for (const installment of installments) {
             // Determinar em qual fatura esta parcela vai
             let invoiceMonthDate = new Date(installment.date)
@@ -548,7 +556,7 @@ export function ExpenseForm({
         </div>
 
         {formData.paymentMethod === 'credit' &&
-          formData.cardId &&
+          formData.cardId && formData.cardId.length &&
           !isEditing && (
             <InstallmentConfig
               onInstallmentChange={handleInstallmentChange}
