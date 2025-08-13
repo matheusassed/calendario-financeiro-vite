@@ -31,7 +31,7 @@ export const calculateInstallments = (totalValue, installments) => {
 
   // Criar array com valores das parcelas
   const values = Array(installments).fill(installmentValue)
-  
+
   // Distribuir o resto nas últimas parcelas (centavos)
   const remainderCents = Math.round(remainder * 100)
   if (remainder > 0) {
@@ -64,7 +64,7 @@ export const getInstallmentDates = (purchaseDate, card, installments) => {
 
   // Determinar em qual fatura a primeira parcela vai entrar
   let firstInvoiceMonth = new Date(currentDate)
-  
+
   // Se a compra foi depois do fechamento, vai para a próxima fatura
   if (currentDate.getDate() > card.invoiceCloseDay) {
     firstInvoiceMonth.setMonth(firstInvoiceMonth.getMonth() + 1)
@@ -123,7 +123,7 @@ export const validateInstallmentConfig = (config) => {
     today.setHours(0, 0, 0, 0)
     const purchase = new Date(config.purchaseDate)
     purchase.setHours(0, 0, 0, 0)
-    
+
     if (purchase > today) {
       errors.push('Data da compra não pode ser no futuro')
     }
