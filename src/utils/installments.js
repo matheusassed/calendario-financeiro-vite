@@ -233,6 +233,7 @@ export const generateInstallmentSeries = (baseTransaction, installmentConfig) =>
     installmentId,
     installmentTotal: installmentConfig.installments,
     description: `${baseTransaction.description} (Compra Parcelada) - ${brlStringTotalValue} em ${installmentConfig.installments}x de ${brlStringInstallmentValue}`,
+    installmentValue: installmentConfig.installmentValue.installmentValue,
   }
   const { values } = calculateInstallments(installmentConfig.totalValue, installmentConfig.installments)
   const invoiceDates = getInstallmentDates(

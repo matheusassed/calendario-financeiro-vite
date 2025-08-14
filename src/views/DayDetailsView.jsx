@@ -594,7 +594,7 @@ export function DayDetailsView({
                       </div>
                       <div className="transaction-info-right">
                         <p className="transaction-value">
-                          - R$ {trans.value.toFixed(2)}
+                          - R$ {trans.installmentValue ? trans.installmentValue.toFixed(2) : trans.value.toFixed(2)}
                         </p>
                         {!trans.isInvoicePayment && (
                           <div className="transaction-actions">
