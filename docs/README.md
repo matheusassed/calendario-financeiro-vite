@@ -15,6 +15,8 @@ Este diretório reúne documentos para entender rapidamente o contexto, a arquit
 - **Suporte e Decisões**:
   - [Troubleshooting](./troubleshooting.md)
   - [Decisões Técnicas](./decisoes-tecnicas.md)
+- **Templates de Trabalho**:
+  - [Modelos de Prompts](./modelos-de-prompts.md)
 
 ```
 Estrutura atual do código (resumo)
