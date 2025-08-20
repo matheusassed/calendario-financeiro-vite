@@ -59,7 +59,7 @@ Oportunidades de melhoria:
 - [x] Implementar criação de série recorrente
 - [ ] ~Sistema de geração automática (1 ano à frente)~
 - [ ] ~Trigger para criação de novas instâncias~
-- [ ] Implementar edição de série recorrente
+- [x] Implementar edição de série recorrente
 
 ##### 2.3 Operações em Série
 
@@ -72,9 +72,9 @@ Oportunidades de melhoria:
 
 ##### 3.1 Interface de Parcelamento
 
-- [ ] Adicionar opção "Parcelar compra" no formulário de despesa
-- [ ] Componente de configuração de parcelas
-- [ ] Preview das parcelas nas faturas
+- [x] Adicionar opção "Parcelar compra" no formulário de despesa
+- [x] Componente de configuração de parcelas
+- [x] Preview das parcelas nas faturas
 - [ ] Validações de parcelamento
 
 ##### 3.2 Integração com Faturas
