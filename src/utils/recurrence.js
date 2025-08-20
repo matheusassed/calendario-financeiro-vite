@@ -197,20 +197,11 @@ export const getAffectedInstances = (transaction, editOption, allTransactions) =
     return [transaction.id]
   }
 
-  console.log('getAffectedInstances chamada:', {
-    transactionId: transaction.id,
-    isRecurring: isRecurringTransaction(transaction),
-    recurrenceId: transaction.recurrenceId,
-    editOption
-  })
-
   if (!isRecurringTransaction(transaction)) {
-    console.log('Transação não é recorrente, retornando apenas ela mesma')
     return [transaction.id]
   }
 
   const series = getRecurrenceSeries(transaction.recurrenceId, allTransactions)
-  console.log(`Série encontrada: ${series.length} transações`)
 
   if (series.length === 0) {
     console.warn('Série vazia, retornando apenas a transação atual')
@@ -218,7 +209,6 @@ export const getAffectedInstances = (transaction, editOption, allTransactions) =
   }
 
   const currentIndex = transaction.recurrenceIndex || 0
-  console.log('Índice atual na série:', currentIndex)
 
   let result = []
 
@@ -242,7 +232,6 @@ export const getAffectedInstances = (transaction, editOption, allTransactions) =
       result = [transaction.id]
   }
 
-  console.log(`IDs afetados (${editOption}):`, result)
   return result.filter(id => id) // Remover IDs inválidos/undefined
 }
 
@@ -370,17 +359,7 @@ export const updateRecurringSeries = async (
 
   const { writeBatch, doc } = await import('firebase/firestore')
 
-  console.log('updateRecurringSeries chamada com:', {
-    editedTransactionId: editedTransaction.id,
-    isRecurring: editedTransaction.isRecurring,
-    recurrenceId: editedTransaction.recurrenceId,
-    editOption,
-    collectionPath,
-    allTransactionsCount: allTransactions.length
-  })
-
   const affectedIds = getAffectedInstances(editedTransaction, editOption, allTransactions)
-  console.log('IDs afetados:', affectedIds)
 
   if (affectedIds.length === 0) {
     console.warn('Nenhuma transação afetada encontrada')
@@ -397,12 +376,6 @@ export const updateRecurringSeries = async (
   const newDate = editedTransaction.date
   const dateDifference = newDate.getTime() - originalDate.getTime()
 
-  console.log('Cálculo de datas:', {
-    originalDate: originalDate.toISOString().split('T')[0],
-    newDate: newDate.toISOString().split('T')[0],
-    dateDifferenceInDays: Math.round(dateDifference / (1000 * 60 * 60 * 24))
-  })
-
   const batch = writeBatch(db)
 
   // Preparar dados para atualização
@@ -418,13 +391,9 @@ export const updateRecurringSeries = async (
     ...updateData
   } = editedTransaction
 
-  console.log('Dados base para atualização (sem date/fiscalMonth):', updateData)
-
   let successCount = 0
 
   for (const transactionId of affectedIds) {
-    console.log(`Processando transação: ${transactionId}`)
-
     if (!transactionId || typeof transactionId !== 'string') {
       console.error(`ID de transação inválido: ${transactionId}`)
       continue
@@ -442,14 +411,11 @@ export const updateRecurringSeries = async (
       let finalData
 
       if (editOption === EDIT_OPTIONS.THIS_ONLY) {
-        // Para "apenas esta", usar exatamente a data editada
         finalData = {
           ...updateData,
           date: newDate,
           fiscalMonth: formatFiscalMonth(newDate)
         }
-        console.log(`THIS_ONLY - ${transactionId}: data = ${newDate.toISOString().split('T')[0]}`)
-
       } else {
         // Para "esta e futuras" ou "todas" - aplicar a DIFERENÇA de data
         const targetOriginalDate = targetTransaction.date
@@ -460,12 +426,6 @@ export const updateRecurringSeries = async (
           date: calculatedDate,
           fiscalMonth: formatFiscalMonth(calculatedDate)
         }
-
-        console.log(`${editOption} - ${transactionId}:`, {
-          originalDate: targetOriginalDate.toISOString().split('T')[0],
-          calculatedDate: calculatedDate.toISOString().split('T')[0],
-          index: targetTransaction.recurrenceIndex
-        })
       }
 
       batch.update(docRef, finalData)
@@ -479,11 +439,7 @@ export const updateRecurringSeries = async (
   if (successCount === 0) {
     throw new Error('Nenhuma transação pôde ser processada')
   }
-
-  console.log(`Executando batch commit para ${successCount} transações...`)
   await batch.commit()
-  console.log(`${successCount} transações atualizadas com sucesso`)
-
   return successCount
 }
 
@@ -545,13 +501,6 @@ export const breakRecurrenceSeries = async (
     const newDate = newData.date
     const dateDifference = newDate.getTime() - originalDate.getTime()
 
-    console.log('breakRecurrenceSeries - cálculo de datas:', {
-      originalDate: originalDate.toISOString().split('T')[0],
-      newDate: newDate.toISOString().split('T')[0],
-      dateDifferenceInDays: Math.round(dateDifference / (1000 * 60 * 60 * 24)),
-      affectedCount: affectedTransactions.length
-    })
-
     const batch = writeBatch(db)
     const newRecurrenceId = generateRecurrenceId()
 
@@ -573,12 +522,6 @@ export const breakRecurrenceSeries = async (
         fiscalMonth: formatFiscalMonth(calculatedDate)
       }
 
-      console.log(`Nova série - ${t.id}:`, {
-        originalDate: targetOriginalDate.toISOString().split('T')[0],
-        newDate: calculatedDate.toISOString().split('T')[0],
-        newIndex: index
-      })
-
       batch.update(docRef, updatedData)
     })
 
@@ -598,15 +541,5 @@ export const breakRecurrenceSeries = async (
  */
 export const debugRecurrenceSeries = (recurrenceId, allTransactions) => {
   const series = getRecurrenceSeries(recurrenceId, allTransactions)
-  console.log(`Série ${recurrenceId}:`, {
-    total: series.length,
-    transactions: series.map(t => ({
-      id: t.id,
-      index: t.recurrenceIndex,
-      date: t.date.toISOString().split('T')[0],
-      description: t.description,
-      value: t.value
-    }))
-  })
   return series
 }

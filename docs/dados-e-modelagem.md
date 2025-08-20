@@ -17,24 +17,24 @@
 - `name: string`
 - `brand: string`
 - `last4: string`
-- `closingDay: number`  (dia de fechamento)
-- `dueDay: number`      (dia de vencimento)
+- `invoiceCloseDay: number`  (dia de fechamento da fatura)
+- `dueDay: number`           (dia de vencimento)
 - `ownerId: string`
 
 ### Faturas (`invoices/{invoiceId}`)
 - `cardId: string`
 - `month: string`       (YYYY-MM)
-- `amount: number`
+- `total: number`       (valor total da fatura)
 - `status: 'open' | 'closed' | 'paid'`
 
 ### Transações (`transactions/{transactionId}`)
 - `type: 'income' | 'expense'`
-- `title: string`
-- `amount: number`
-- `date: string`        (YYYY-MM-DD)
+- `description: string`  (título/descrição da transação)
+- `value: number`        (valor da transação)
+- `date: string`         (YYYY-MM-DD)
 - `categoryId: string`
 - `notes?: string`
-- `cardId?: string`     (para despesas no cartão)
+- `cardId?: string`      (para despesas no cartão)
 - `invoiceId?: string`
 - `recurrence?: Recurrence`
 - `ownerId: string`

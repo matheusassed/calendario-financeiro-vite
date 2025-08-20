@@ -34,9 +34,9 @@ export interface Recurrence {
 export interface Transaction {
   id: string;
   type: 'income' | 'expense';
-  title: string;
-  amount: number;
-  date: string; // ISO
+  description: string;  // título/descrição da transação
+  value: number;        // valor da transação
+  date: string;         // ISO
   categoryId: string;
   notes?: string;
   cardId?: string;

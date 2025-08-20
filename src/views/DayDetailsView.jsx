@@ -324,12 +324,6 @@ export function DayDetailsView({
         ...pendingEditData, // Novos dados do formulário
       }
 
-      console.log('Debug - dados combinados:', {
-        original: transactionToEdit,
-        newData: pendingEditData,
-        combined: editedTransaction,
-      })
-
       let updatedCount = 0
 
       if (isAdvanced && editOption !== EDIT_OPTIONS.ALL) {

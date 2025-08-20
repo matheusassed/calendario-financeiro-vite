@@ -250,8 +250,6 @@ export function ExpenseForm({
             card: card,
           })
 
-          console.log(`Criando 1 transação principal e ${installments.length} parcelas`)
-
           // Criar batch para todas as transações
           const batch = writeBatch(db)
           const invoiceUpdates = new Map() // Para agrupar atualizações por fatura

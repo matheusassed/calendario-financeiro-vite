@@ -27,3 +27,9 @@
 ### Revisões
 - Commits pequenos e descritivos.
 - Atualizar `docs/` quando houver mudança estrutural.
+
+### Logging e Debug
+- **Logging**: Usar `src/utils/logger.js` para logs padronizados.
+- **Desenvolvimento**: Logs de debug só aparecem em `import.meta.env.DEV`.
+- **Produção**: Apenas logs de erro e warning são exibidos.
+- **Console.log**: Evitar uso direto, preferir logger padronizado.

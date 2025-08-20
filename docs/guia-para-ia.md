@@ -26,3 +26,5 @@ Permitir que IAs compreendam rapidamente o projeto e proponham mudanças seguras
 - Impacto em dados considerado?
 - Estados e props minimizados e coesos?
 - Regressões em `CalendarView`/`DayDetailsView`?
+- Logs de debug removidos ou convertidos para `logger.js`?
+- Nomenclatura alinhada com modelos documentados?
