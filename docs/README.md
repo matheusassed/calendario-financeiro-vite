@@ -11,7 +11,6 @@ Este diretório reúne documentos para entender rapidamente o contexto, a arquit
   - [Padrões e Convenções](./padroes-e-convencoes.md)
   - [Guia para IA](./guia-para-ia.md)
   - [Migração para TypeScript](./migracao-typescript.md)
-  - [Prompts de Exemplo](./prompts-de-exemplo.md)
 - **Suporte e Decisões**:
   - [Troubleshooting](./troubleshooting.md)
   - [Decisões Técnicas](./decisoes-tecnicas.md)
