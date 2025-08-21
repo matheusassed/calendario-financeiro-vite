@@ -5,6 +5,37 @@
 import { formatFiscalMonth } from './helpers'
 
 /**
+ * Gera um ID único para uma série de parcelas
+ * @returns {string} - ID único
+ */
+export const generateInstallmentId = () => {
+  return Math.random().toString(36).substring(2, 15) + 
+         Math.random().toString(36).substring(2, 15)
+}
+
+/**
+ * Obtém todas as parcelas de uma série
+ * @param {string} installmentId - ID da série
+ * @param {Array} allTransactions - Todas as transações
+ * @returns {Array} - Array com as parcelas da série
+ */
+export const getInstallmentSeries = (installmentId, allTransactions) => {
+  return allTransactions.filter(t => 
+    t.installmentId === installmentId || 
+    (t.isInstallment && t.installmentId === installmentId)
+  )
+}
+
+/**
+ * Verifica se uma transação é uma parcela
+ * @param {Object} transaction - Transação a ser verificada
+ * @returns {boolean} - Verdadeiro se for uma transação parcelada
+ */
+export const isInstallmentTransaction = (transaction) => {
+  return transaction?.isInstallment || false
+}
+
+/**
  * Configurações de parcelamento
  */
 export const INSTALLMENT_CONFIG = {
