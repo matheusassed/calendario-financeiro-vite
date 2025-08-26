@@ -114,9 +114,13 @@ export function ExpenseForm({
   }, [])
 
   const handleInstallmentChange = useCallback((config) => {
+    // Garantir que a data seja tratada corretamente
+    const purchaseDate = new Date(formData.date + 'T12:00:00')
+    purchaseDate.setHours(12, 0, 0, 0) // Fixar horário para evitar problemas de timezone
+    
     setInstallmentConfig({
       ...config,
-      purchaseDate: formData.date,
+      purchaseDate: purchaseDate, // Converter string para Date e fixar horário
       card: creditCards.find((card) => card.id === formData.cardId),
     })
   }, [formData.date, formData.cardId, creditCards])
@@ -244,8 +248,8 @@ export function ExpenseForm({
             return
           }
 
-          // Gerar transação principal e parcelas
-          const { mainTransaction, installments } = generateInstallmentSeries(dataToSave, {
+          // Gerar apenas as parcelas
+          const installments = generateInstallmentSeries(dataToSave, {
             ...installmentConfig,
             card: card,
           })
@@ -254,19 +258,10 @@ export function ExpenseForm({
           const batch = writeBatch(db)
           const invoiceUpdates = new Map() // Para agrupar atualizações por fatura
 
-          // Primeiro salva a transação principal (compra)
-          const mainTransactionRef = doc(
-            collection(db, `artifacts/${appId}/users/${user.uid}/transactions`)
-          )
-          batch.set(mainTransactionRef, mainTransaction)
-
-          // Depois salva as parcelas
+          // Salvar apenas as parcelas
           for (const installment of installments) {
-            // Determinar em qual fatura esta parcela vai
-            let invoiceMonthDate = new Date(installment.date)
-            if (installment.date.getDate() > card.invoiceCloseDay) {
-              invoiceMonthDate.setMonth(invoiceMonthDate.getMonth() + 1)
-            }
+            // Determinar em qual fatura esta parcela vai baseado na data da fatura
+            let invoiceMonthDate = new Date(installment.invoiceDate)
             const invoiceMonthStr = formatFiscalMonth(invoiceMonthDate)
 
             // Verificar se a fatura já existe

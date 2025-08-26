@@ -91,20 +91,23 @@ export const getInstallmentDates = (purchaseDate, card, installments) => {
   }
 
   const dates = []
-  let currentDate = new Date(purchaseDate)
+  // Garantir que a data da compra seja tratada corretamente, sem problemas de timezone
+  const purchaseDateObj = new Date(purchaseDate)
+  purchaseDateObj.setHours(12, 0, 0, 0) // Fixar horário para evitar problemas de timezone
 
   // Determinar em qual fatura a primeira parcela vai entrar
-  let firstInvoiceMonth = new Date(currentDate)
+  let firstInvoiceMonth = new Date(purchaseDateObj)
 
   // Se a compra foi depois do fechamento, vai para a próxima fatura
-  if (currentDate.getDate() > card.invoiceCloseDay) {
+  if (purchaseDateObj.getDate() > card.invoiceCloseDay) {
     firstInvoiceMonth.setMonth(firstInvoiceMonth.getMonth() + 1)
   }
 
   // Gerar datas das próximas faturas
   for (let i = 0; i < installments; i++) {
     const invoiceDate = new Date(firstInvoiceMonth)
-    invoiceDate.setMonth(invoiceDate.getMonth() + i)
+    invoiceDate.setMonth(firstInvoiceMonth.getMonth() + i)
+    invoiceDate.setHours(12, 0, 0, 0) // Fixar horário para consistência
     dates.push(invoiceDate)
   }
 
@@ -187,10 +190,15 @@ export const createInstallmentInstance = (
   // eslint-disable-next-line no-unused-vars
   const { id, value, ...cleanBaseTransaction } = baseTransaction
 
+  // Garantir que a data da compra seja tratada corretamente
+  const purchaseDate = new Date(installmentConfig.purchaseDate)
+  purchaseDate.setHours(12, 0, 0, 0) // Fixar horário para evitar problemas de timezone
+
   return {
     ...cleanBaseTransaction,
     value: installmentValue,
-    date: new Date(invoiceDate), // Usar data da fatura para a parcela
+    date: purchaseDate, // Data da compra para exibição no calendário
+    invoiceDate: new Date(invoiceDate), // Armazenar data da fatura separadamente
     fiscalMonth: formatFiscalMonth(invoiceDate), // Mês fiscal baseado na fatura
     installmentId,
     installmentIndex: index + 1, // 1-based para o usuário
@@ -219,24 +227,7 @@ export const generateInstallmentSeries = (baseTransaction, installmentConfig) =>
 
   const installmentId = generateInstallmentId()
 
-  // Criar transação principal (compra) sem valor contabilizado
-  const brlStringTotalValue = installmentConfig.totalValue.toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  })
-  const brlStringInstallmentValue = installmentConfig.installmentValue.installmentValue.toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  })
-  const mainTransaction = {
-    ...baseTransaction,
-    value: 0,
-    isInstallmentMaster: true,
-    installmentId,
-    installmentTotal: installmentConfig.installments,
-    description: `${baseTransaction.description} (Compra Parcelada) - ${brlStringTotalValue} em ${installmentConfig.installments}x de ${brlStringInstallmentValue}`,
-    installmentValue: installmentConfig.installmentValue.installmentValue,
-  }
+  // Calcular valores das parcelas
   const { values } = calculateInstallments(installmentConfig.totalValue, installmentConfig.installments)
   const invoiceDates = getInstallmentDates(
     installmentConfig.purchaseDate,
@@ -258,10 +249,7 @@ export const generateInstallmentSeries = (baseTransaction, installmentConfig) =>
     installments.push(installment)
   }
 
-  return {
-    mainTransaction,
-    installments
-  }
+  return installments // Retornar apenas as parcelas, sem transação principal
 }
 
 /**

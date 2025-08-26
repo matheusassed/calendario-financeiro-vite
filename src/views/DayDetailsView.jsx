@@ -108,21 +108,26 @@ export function DayDetailsView({
       }
     }
 
+    // CORREÇÃO: Filtrar transações que devem aparecer no dia selecionado
     const realDayTransactions = transactions.filter((t) => {
+      // Para todas as transações, usar a data padrão (que para parcelas é a data da compra)
       const tDate = t.date
-      return (
-        tDate.getDate() === selectedDate.getDate() &&
-        tDate.getMonth() === selectedDate.getMonth() &&
-        tDate.getFullYear() === selectedDate.getFullYear()
-      )
+      
+      // Garantir que a comparação de datas seja feita corretamente, considerando apenas dia/mês/ano
+      // e ignorando problemas de timezone
+      const tDateNormalized = new Date(tDate.getFullYear(), tDate.getMonth(), tDate.getDate())
+      const selectedDateNormalized = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
+      
+      return tDateNormalized.getTime() === selectedDateNormalized.getTime()
     })
     const dueInvoicesToday = invoices.filter((inv) => {
       const dueDate = inv.dueDate
-      return (
-        dueDate.getDate() === selectedDate.getDate() &&
-        dueDate.getMonth() === selectedDate.getMonth() &&
-        dueDate.getFullYear() === selectedDate.getFullYear()
-      )
+      
+      // Garantir que a comparação de datas seja feita corretamente
+      const dueDateNormalized = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate())
+      const selectedDateNormalized = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
+      
+      return dueDateNormalized.getTime() === selectedDateNormalized.getTime()
     })
     const invoiceTransactions = dueInvoicesToday.map((inv) => ({
       id: `invoice_${inv.id}`,
@@ -135,8 +140,14 @@ export function DayDetailsView({
     const dailyRevenues = dayTransactions
       .filter((t) => t.type === 'revenue')
       .reduce((sum, t) => sum + t.value, 0)
+    // CORREÇÃO: Desconsiderar transações de cartão de crédito e parcelas no somatório do dia
     const dailyExpenses = dayTransactions
-      .filter((t) => t.type === 'expense' && t.paymentMethod !== 'credit')
+      .filter((t) => 
+        t.type === 'expense' && 
+        t.paymentMethod !== 'credit' && 
+        !t.isInstallment && // Não contabilizar parcelas
+        !t.isInstallmentMaster // Não contabilizar transações principais de parcelamento
+      )
       .reduce((sum, t) => sum + t.value, 0)
 
     let cumulativeBalance = 0
@@ -558,7 +569,10 @@ export function DayDetailsView({
                           <CreditCard size={16} className="invoice-icon" />
                         )}
                         <p className="transaction-description">
-                          {trans.description}
+                          {trans.isInstallment 
+                            ? `${trans.description.replace(/\s*\(\d+\/\d+\)$/, '')} (Compra Parcelada - ${trans.installmentIndex}/${trans.installmentTotal})`
+                            : trans.description
+                          }
                         </p>
                         <div className="transaction-tags">
                           {!trans.isInvoicePayment && (
@@ -570,6 +584,11 @@ export function DayDetailsView({
                             <span className="credit-card-tag">
                               <CreditCard size={12} />
                               {getCardName(trans.cardId)}
+                            </span>
+                          )}
+                          {trans.isInstallment && (
+                            <span className="installment-tag">
+                              Parcela {trans.installmentIndex}/{trans.installmentTotal}
                             </span>
                           )}
                           {isFutureFiscalMonth && (
@@ -588,7 +607,12 @@ export function DayDetailsView({
                       </div>
                       <div className="transaction-info-right">
                         <p className="transaction-value">
-                          - R$ {trans.installmentValue ? trans.installmentValue.toFixed(2) : trans.value.toFixed(2)}
+                          - R$ {(() => {
+                            if (trans.isInstallment) {
+                              return trans.installmentValue ? trans.installmentValue.toFixed(2) : trans.value.toFixed(2)
+                            }
+                            return trans.value.toFixed(2)
+                          })()}
                         </p>
                         {!trans.isInvoicePayment && (
                           <div className="transaction-actions">
