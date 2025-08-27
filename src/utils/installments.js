@@ -347,3 +347,34 @@ export const formatInstallmentDisplay = (installment) => {
 
   return `${installment.description} (${installment.installmentIndex}/${installment.installmentTotal})`
 }
+
+/**
+ * Agrupa parcelas por compra para exibição consolidada
+ * @param {Array} transactions - Array de transações
+ * @returns {Array} - Array com grupos de parcelas agrupadas
+ */
+export const groupInstallmentsByPurchase = (transactions) => {
+  const groups = new Map()
+  
+  transactions.forEach(transaction => {
+    if (transaction.isInstallment && transaction.installmentId) {
+      if (!groups.has(transaction.installmentId)) {
+        groups.set(transaction.installmentId, {
+          installmentId: transaction.installmentId,
+          description: transaction.description.replace(/\s*\(\d+\/\d+\)$/, ''), // Remove (1/3), (2/3), etc
+          totalValue: transaction.totalValue,
+          installments: transaction.installmentTotal,
+          categoryId: transaction.categoryId,
+          cardId: transaction.cardId,
+          paymentMethod: transaction.paymentMethod,
+          date: transaction.date,
+          parcels: []
+        })
+      }
+      
+      groups.get(transaction.installmentId).parcels.push(transaction)
+    }
+  })
+  
+  return Array.from(groups.values())
+}

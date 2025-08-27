@@ -967,6 +967,16 @@ body {
   border-radius: 12px;
 }
 
+.installment-tag {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #ffffff; /* white */
+  background-color: var(--primary-color, #3b82f6);/* blue-700 */
+  padding: 0.1rem 0.5rem;
+  border-radius: 12px;
+  align-self: flex-start;
+}
+
 /* TRANSACTION TAGS */
 
 /* TRANSAÇÃO DA FATURA */
@@ -2082,6 +2092,28 @@ body {
 
 .transaction-card.installment .transaction-description {
   padding-left: 24px;
+}
+
+/* Estilo para grupos de parcelas agrupadas */
+.transaction-card.installment-group {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-left: 4px solid var(--primary-color, #3b82f6);
+  position: relative;
+}
+
+.transaction-card.installment-group::before {
+  content: "📦";
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.transaction-card.installment-group .transaction-description {
+  padding-left: 28px;
+  font-weight: 600;
+  color: var(--text-dark, #1f2937);
 }
 
 .installment-indicator {
