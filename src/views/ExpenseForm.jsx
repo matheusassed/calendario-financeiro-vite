@@ -113,17 +113,20 @@ export function ExpenseForm({
     setRecurrenceRule(rule)
   }, [])
 
-  const handleInstallmentChange = useCallback((config) => {
-    // Garantir que a data seja tratada corretamente
-    const purchaseDate = new Date(formData.date + 'T12:00:00')
-    purchaseDate.setHours(12, 0, 0, 0) // Fixar horário para evitar problemas de timezone
-    
-    setInstallmentConfig({
-      ...config,
-      purchaseDate: purchaseDate, // Converter string para Date e fixar horário
-      card: creditCards.find((card) => card.id === formData.cardId),
-    })
-  }, [formData.date, formData.cardId, creditCards])
+  const handleInstallmentChange = useCallback(
+    (config) => {
+      // Garantir que a data seja tratada corretamente
+      const purchaseDate = new Date(formData.date + 'T12:00:00')
+      purchaseDate.setHours(12, 0, 0, 0) // Fixar horário para evitar problemas de timezone
+
+      setInstallmentConfig({
+        ...config,
+        purchaseDate: purchaseDate, // Converter string para Date e fixar horário
+        card: creditCards.find((card) => card.id === formData.cardId),
+      })
+    },
+    [formData.date, formData.cardId, creditCards],
+  )
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -238,7 +241,10 @@ export function ExpenseForm({
             setError(
               `Configuração de parcelamento inválida: ${validation.errors.join(', ')}`,
             )
-            toast.error(`Configuração de parcelamento inválida: ${validation.errors.join(', ')}`, { id: loadingToast })
+            toast.error(
+              `Configuração de parcelamento inválida: ${validation.errors.join(', ')}`,
+              { id: loadingToast },
+            )
             return
           }
 
@@ -549,7 +555,8 @@ export function ExpenseForm({
         </div>
 
         {formData.paymentMethod === 'credit' &&
-          formData.cardId && formData.cardId.length &&
+          formData.cardId &&
+          formData.cardId.length &&
           !isEditing && (
             <InstallmentConfig
               onInstallmentChange={handleInstallmentChange}

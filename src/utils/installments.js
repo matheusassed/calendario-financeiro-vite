@@ -9,8 +9,10 @@ import { formatFiscalMonth } from './helpers'
  * @returns {string} - ID único
  */
 export const generateInstallmentId = () => {
-  return Math.random().toString(36).substring(2, 15) + 
-         Math.random().toString(36).substring(2, 15)
+  return (
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15)
+  )
 }
 
 /**
@@ -20,9 +22,10 @@ export const generateInstallmentId = () => {
  * @returns {Array} - Array com as parcelas da série
  */
 export const getInstallmentSeries = (installmentId, allTransactions) => {
-  return allTransactions.filter(t => 
-    t.installmentId === installmentId || 
-    (t.isInstallment && t.installmentId === installmentId)
+  return allTransactions.filter(
+    (t) =>
+      t.installmentId === installmentId ||
+      (t.isInstallment && t.installmentId === installmentId),
   )
 }
 
@@ -41,7 +44,7 @@ export const isInstallmentTransaction = (transaction) => {
 export const INSTALLMENT_CONFIG = {
   MIN_INSTALLMENTS: 2,
   MAX_INSTALLMENTS: 24,
-  MIN_INSTALLMENT_VALUE: 1.00
+  MIN_INSTALLMENT_VALUE: 1.0,
 }
 
 /**
@@ -58,7 +61,7 @@ export const calculateInstallments = (totalValue, installments) => {
   // Calcular valor base da parcela (sem arredondamento)
   const baseValue = totalValue / installments
   const installmentValue = Math.floor(baseValue * 100) / 100 // Truncar para 2 decimais
-  const remainder = totalValue - (installmentValue * installments)
+  const remainder = totalValue - installmentValue * installments
 
   // Criar array com valores das parcelas
   const values = Array(installments).fill(installmentValue)
@@ -74,7 +77,7 @@ export const calculateInstallments = (totalValue, installments) => {
   return {
     installmentValue: installmentValue,
     remainder: remainderCents || 0,
-    values: values.map(v => Math.round(v * 100) / 100) // Garantir 2 decimais
+    values: values.map((v) => Math.round(v * 100) / 100), // Garantir 2 decimais
   }
 }
 
@@ -131,18 +134,30 @@ export const validateInstallmentConfig = (config) => {
     errors.push('Valor total deve ser maior que zero')
   }
 
-  if (!config.installments || config.installments < INSTALLMENT_CONFIG.MIN_INSTALLMENTS) {
-    errors.push(`Número mínimo de parcelas: ${INSTALLMENT_CONFIG.MIN_INSTALLMENTS}`)
+  if (
+    !config.installments ||
+    config.installments < INSTALLMENT_CONFIG.MIN_INSTALLMENTS
+  ) {
+    errors.push(
+      `Número mínimo de parcelas: ${INSTALLMENT_CONFIG.MIN_INSTALLMENTS}`,
+    )
   }
 
   if (config.installments > INSTALLMENT_CONFIG.MAX_INSTALLMENTS) {
-    errors.push(`Número máximo de parcelas: ${INSTALLMENT_CONFIG.MAX_INSTALLMENTS}`)
+    errors.push(
+      `Número máximo de parcelas: ${INSTALLMENT_CONFIG.MAX_INSTALLMENTS}`,
+    )
   }
 
   if (config.totalValue && config.installments) {
-    const { installmentValue } = calculateInstallments(config.totalValue, config.installments)
+    const { installmentValue } = calculateInstallments(
+      config.totalValue,
+      config.installments,
+    )
     if (installmentValue < INSTALLMENT_CONFIG.MIN_INSTALLMENT_VALUE) {
-      errors.push(`Valor mínimo por parcela: R$ ${INSTALLMENT_CONFIG.MIN_INSTALLMENT_VALUE.toFixed(2)}`)
+      errors.push(
+        `Valor mínimo por parcela: R$ ${INSTALLMENT_CONFIG.MIN_INSTALLMENT_VALUE.toFixed(2)}`,
+      )
     }
   }
 
@@ -165,7 +180,7 @@ export const validateInstallmentConfig = (config) => {
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   }
 }
 
@@ -185,7 +200,7 @@ export const createInstallmentInstance = (
   index,
   invoiceDate,
   installmentValue,
-  installmentId
+  installmentId,
 ) => {
   // eslint-disable-next-line no-unused-vars
   const { id, value, ...cleanBaseTransaction } = baseTransaction
@@ -209,7 +224,7 @@ export const createInstallmentInstance = (
     isInstallment: true,
     // Modificar descrição para incluir parcela
     description: `${baseTransaction.description} (${index + 1}/${installmentConfig.installments})`,
-    createdAt: new Date()
+    createdAt: new Date(),
   }
 }
 
@@ -219,7 +234,10 @@ export const createInstallmentInstance = (
  * @param {Object} installmentConfig - Configuração do parcelamento
  * @returns {Array} - Array com todas as parcelas
  */
-export const generateInstallmentSeries = (baseTransaction, installmentConfig) => {
+export const generateInstallmentSeries = (
+  baseTransaction,
+  installmentConfig,
+) => {
   const validation = validateInstallmentConfig(installmentConfig)
   if (!validation.isValid) {
     throw new Error(`Configuração inválida: ${validation.errors.join(', ')}`)
@@ -228,11 +246,14 @@ export const generateInstallmentSeries = (baseTransaction, installmentConfig) =>
   const installmentId = generateInstallmentId()
 
   // Calcular valores das parcelas
-  const { values } = calculateInstallments(installmentConfig.totalValue, installmentConfig.installments)
+  const { values } = calculateInstallments(
+    installmentConfig.totalValue,
+    installmentConfig.installments,
+  )
   const invoiceDates = getInstallmentDates(
     installmentConfig.purchaseDate,
     installmentConfig.card,
-    installmentConfig.installments
+    installmentConfig.installments,
   )
 
   const installments = []
@@ -244,7 +265,7 @@ export const generateInstallmentSeries = (baseTransaction, installmentConfig) =>
       i,
       invoiceDates[i],
       values[i],
-      installmentId
+      installmentId,
     )
     installments.push(installment)
   }
@@ -277,7 +298,7 @@ export const getInstallmentSeriesInfo = (installmentId, allTransactions) => {
     remaining: first.totalValue - totalPaid,
     originalDate: first.originalPurchaseDate,
     description: first.description.replace(/\s*\(\d+\/\d+\)$/, ''), // Remover sufixo de parcela
-    card: first.cardId
+    card: first.cardId,
   }
 }
 
@@ -295,12 +316,12 @@ export const cancelRemainingInstallments = async (
   fromIndex,
   allTransactions,
   db,
-  collectionPath
+  collectionPath,
 ) => {
   const { writeBatch, doc } = await import('firebase/firestore')
 
   const series = getInstallmentSeries(installmentId, allTransactions)
-  const toCancel = series.filter(t => t.installmentIndex >= fromIndex)
+  const toCancel = series.filter((t) => t.installmentIndex >= fromIndex)
 
   if (toCancel.length === 0) {
     return 0
@@ -308,7 +329,7 @@ export const cancelRemainingInstallments = async (
 
   const batch = writeBatch(db)
 
-  toCancel.forEach(installment => {
+  toCancel.forEach((installment) => {
     const docRef = doc(db, collectionPath, installment.id)
     batch.delete(docRef)
   })
@@ -325,7 +346,10 @@ export const cancelRemainingInstallments = async (
 export const getInstallmentDescription = (installmentConfig) => {
   if (!installmentConfig) return ''
 
-  const { values } = calculateInstallments(installmentConfig.totalValue, installmentConfig.installments)
+  const { values } = calculateInstallments(
+    installmentConfig.totalValue,
+    installmentConfig.installments,
+  )
   const hasRemainder = values[0] !== values[values.length - 1]
 
   if (hasRemainder) {
@@ -355,8 +379,8 @@ export const formatInstallmentDisplay = (installment) => {
  */
 export const groupInstallmentsByPurchase = (transactions) => {
   const groups = new Map()
-  
-  transactions.forEach(transaction => {
+
+  transactions.forEach((transaction) => {
     if (transaction.isInstallment && transaction.installmentId) {
       if (!groups.has(transaction.installmentId)) {
         groups.set(transaction.installmentId, {
@@ -368,13 +392,13 @@ export const groupInstallmentsByPurchase = (transactions) => {
           cardId: transaction.cardId,
           paymentMethod: transaction.paymentMethod,
           date: transaction.date,
-          parcels: []
+          parcels: [],
         })
       }
-      
+
       groups.get(transaction.installmentId).parcels.push(transaction)
     }
   })
-  
+
   return Array.from(groups.values())
 }

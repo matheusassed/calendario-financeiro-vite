@@ -45,7 +45,8 @@ export function InstallmentConfig({
             date,
             value:
               index === installments - 1
-                ? totalValue - installmentValue.installmentValue * (installments - 1)
+                ? totalValue -
+                  installmentValue.installmentValue * (installments - 1)
                 : installmentValue.installmentValue,
           })),
         )
@@ -55,7 +56,7 @@ export function InstallmentConfig({
     } else {
       setInstallmentPreview([])
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInstallment, installments, selectedCard, purchaseDate, totalValue])
 
   // Validação quando os parâmetros mudam
@@ -78,8 +79,14 @@ export function InstallmentConfig({
     } else {
       onInstallmentChange({ isInstallment: false, isValid: true })
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInstallment, installments, totalValue, selectedCard, onInstallmentChange])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    isInstallment,
+    installments,
+    totalValue,
+    selectedCard,
+    onInstallmentChange,
+  ])
 
   const handleInstallmentsChange = (e) => {
     const value = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 24)
