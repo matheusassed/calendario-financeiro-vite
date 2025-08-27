@@ -6,6 +6,7 @@ import {
   generateRecurrenceDates,
   getRecurrenceDescription,
 } from '../utils/recurrence'
+import { logger } from '../utils/logger'
 
 export function RecurrenceConfig({
   onRuleChange,
@@ -55,7 +56,7 @@ export function RecurrenceConfig({
           setPreviewDates(dates)
         } catch (error) {
           setPreviewDates([])
-          console.error('Erro ao gerar datas de recorrência:', error)
+          logger.error('Erro ao gerar datas de recorrência:', error)
         }
       } else {
         setPreviewDates([])
@@ -80,7 +81,7 @@ export function RecurrenceConfig({
         onRuleChange(null)
       }
     }
-  }, [calculateCurrentRule]) // Removido onRuleChange das dependências
+  }, [calculateCurrentRule, onRuleChange]) // Adicionado onRuleChange nas dependências
 
   const handleToggle = () => {
     if (disabled) return

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { onSnapshot } from 'firebase/firestore'
+import { logger } from '../utils/logger'
 
 /**
  * Um hook customizado para buscar uma coleção do Firestore em tempo real.
@@ -37,7 +38,7 @@ export const useFirestoreQuery = (query) => {
         setLoading(false)
       },
       (error) => {
-        console.error('Erro no useFirestoreQuery:', error)
+        logger.error('Erro no useFirestoreQuery:', error)
         setLoading(false)
       },
     )

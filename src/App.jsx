@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import { useAuth } from './contexts/AuthContext'
 import { useFirestoreQuery } from './hooks/useFirestoreQuery'
 import { useFirestoreDocument } from './hooks/useFirestoreDocument'
@@ -22,63 +22,63 @@ function App() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState(null)
 
   // --- Funções de Navegação de Dia ---
-  const handleNextDay = () => {
+  const handleNextDay = useCallback(() => {
     if (selectedDate) {
       const nextDay = new Date(selectedDate)
       nextDay.setDate(nextDay.getDate() + 1)
       setSelectedDate(nextDay)
     }
-  }
+  }, [selectedDate, setSelectedDate])
 
-  const handlePrevDay = () => {
+  const handlePrevDay = useCallback(() => {
     if (selectedDate) {
       const prevDay = new Date(selectedDate)
       prevDay.setDate(prevDay.getDate() - 1)
       setSelectedDate(prevDay)
     }
-  }
+  }, [selectedDate, setSelectedDate])
 
   // --- Queries para o Firestore ---
   const transactionsQuery = useMemo(
     () =>
-      user
+      user?.uid
         ? query(
             collection(db, `artifacts/${appId}/users/${user.uid}/transactions`),
           )
         : null,
-    [db, appId, user],
+    [db, appId, user?.uid],
   )
   const categoriesQuery = useMemo(
     () =>
-      user
+      user?.uid
         ? query(
             collection(db, `artifacts/${appId}/users/${user.uid}/categories`),
           )
         : null,
-    [db, appId, user],
+    [db, appId, user?.uid],
   )
   const creditCardsQuery = useMemo(
     () =>
-      user
+      user?.uid
         ? query(
             collection(db, `artifacts/${appId}/users/${user.uid}/creditCards`),
           )
         : null,
-    [db, appId, user],
+    [db, appId, user?.uid],
   )
   const invoicesQuery = useMemo(
     () =>
-      user
+      user?.uid
         ? query(collection(db, `artifacts/${appId}/users/${user.uid}/invoices`))
         : null,
-    [db, appId, user],
+    [db, appId, user?.uid],
   )
   const settingsRef = useMemo(
     () =>
-      user
+      user?.uid
         ? doc(db, `artifacts/${appId}/users/${user.uid}/settings`, 'global')
         : null,
-    [db, appId, user],
+    [db, appId, user?.uid],
   )
 
   // --- Busca de dados com os hooks ---
