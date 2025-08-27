@@ -32,6 +32,12 @@ src/
 - `utils/recurrence.js` concentra regras de repetição (ex.: mensal, semanal, dia do mês).
 - Edição de recorrências via `RecurrenceEditModal` e `RecurrenceEditOptions`.
 
+### Parcelamento
+- `utils/installments.js` gerencia compras parceladas no cartão de crédito.
+- Sistema de agrupamento visual para exibir parcelas consolidadas no calendário.
+- Cada parcela mantém referência individual para faturas, mas exibição agrupada na UI.
+- Suporte a até 24 parcelas com cálculo automático de valores e datas de vencimento.
+
 ### Autenticação
 - `AuthContext.jsx` provê usuário atual e guards de rota/tela.
 

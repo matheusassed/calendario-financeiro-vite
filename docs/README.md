@@ -9,6 +9,7 @@ Este diretório reúne documentos para entender rapidamente o contexto, a arquit
   - [Modelos de Dados](./dados-e-modelagem.md)
   - [Fluxos-Chave](./fluxos-chave.md)
   - [Padrões e Convenções](./padroes-e-convencoes.md)
+  - [Sistema de Parcelas](./sistema-parcelas.md)
   - [Guia para IA](./guia-para-ia.md)
   - [Migração para TypeScript](./migracao-typescript.md)
 - **Suporte e Decisões**:

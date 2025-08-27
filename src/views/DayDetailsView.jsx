@@ -28,6 +28,7 @@ import {
   breakRecurrenceSeries,
   EDIT_OPTIONS,
 } from '../utils/recurrence'
+import { groupInstallmentsByPurchase } from '../utils/installments'
 
 const formatDate = (date) => {
   if (!date) return ''
@@ -102,27 +103,40 @@ export function DayDetailsView({
     if (!selectedDate) {
       return {
         dayTransactions: [],
+        installmentGroups: [],
         dailyRevenues: 0,
         dailyExpenses: 0,
         cumulativeBalance: 0,
       }
     }
 
+    // CORREÇÃO: Filtrar transações que devem aparecer no dia selecionado
     const realDayTransactions = transactions.filter((t) => {
+      // Para todas as transações, usar a data padrão (que para parcelas é a data da compra)
       const tDate = t.date
-      return (
-        tDate.getDate() === selectedDate.getDate() &&
-        tDate.getMonth() === selectedDate.getMonth() &&
-        tDate.getFullYear() === selectedDate.getFullYear()
-      )
+      
+      // Garantir que a comparação de datas seja feita corretamente, considerando apenas dia/mês/ano
+      // e ignorando problemas de timezone
+      const tDateNormalized = new Date(tDate.getFullYear(), tDate.getMonth(), tDate.getDate())
+      const selectedDateNormalized = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
+      
+      return tDateNormalized.getTime() === selectedDateNormalized.getTime()
     })
+
+    // Separar transações normais de parcelas
+    const normalTransactions = realDayTransactions.filter(t => !t.isInstallment)
+    const installmentTransactions = realDayTransactions.filter(t => t.isInstallment)
+    
+    // Agrupar parcelas por compra
+    const installmentGroups = groupInstallmentsByPurchase(installmentTransactions)
     const dueInvoicesToday = invoices.filter((inv) => {
       const dueDate = inv.dueDate
-      return (
-        dueDate.getDate() === selectedDate.getDate() &&
-        dueDate.getMonth() === selectedDate.getMonth() &&
-        dueDate.getFullYear() === selectedDate.getFullYear()
-      )
+      
+      // Garantir que a comparação de datas seja feita corretamente
+      const dueDateNormalized = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate())
+      const selectedDateNormalized = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
+      
+      return dueDateNormalized.getTime() === selectedDateNormalized.getTime()
     })
     const invoiceTransactions = dueInvoicesToday.map((inv) => ({
       id: `invoice_${inv.id}`,
@@ -131,12 +145,20 @@ export function DayDetailsView({
       value: inv.total,
       isInvoicePayment: true,
     }))
-    const dayTransactions = [...realDayTransactions, ...invoiceTransactions]
+    
+    // Combinar transações normais, grupos de parcelas e faturas
+    const dayTransactions = [...normalTransactions, ...invoiceTransactions]
     const dailyRevenues = dayTransactions
       .filter((t) => t.type === 'revenue')
       .reduce((sum, t) => sum + t.value, 0)
+    // CORREÇÃO: Desconsiderar transações de cartão de crédito e parcelas no somatório do dia
     const dailyExpenses = dayTransactions
-      .filter((t) => t.type === 'expense' && t.paymentMethod !== 'credit')
+      .filter((t) => 
+        t.type === 'expense' && 
+        t.paymentMethod !== 'credit' && 
+        !t.isInstallment && // Não contabilizar parcelas
+        !t.isInstallmentMaster // Não contabilizar transações principais de parcelamento
+      )
       .reduce((sum, t) => sum + t.value, 0)
 
     let cumulativeBalance = 0
@@ -185,7 +207,7 @@ export function DayDetailsView({
       cumulativeBalance = balanceFromTransactions - balanceFromInvoices
     }
 
-    return { dayTransactions, dailyRevenues, dailyExpenses, cumulativeBalance }
+    return { dayTransactions, installmentGroups, dailyRevenues, dailyExpenses, cumulativeBalance }
   }, [selectedDate, transactions, invoices, getCardName, viewMode])
 
   if (!selectedDate) {
@@ -323,12 +345,6 @@ export function DayDetailsView({
         ...transactionToEdit, // Metadados originais (id, recurrenceId, etc.)
         ...pendingEditData, // Novos dados do formulário
       }
-
-      console.log('Debug - dados combinados:', {
-        original: transactionToEdit,
-        newData: pendingEditData,
-        combined: editedTransaction,
-      })
 
       let updatedCount = 0
 
@@ -543,79 +559,120 @@ export function DayDetailsView({
             <h2 className="section-title">
               <MinusCircle size={22} /> Despesas
             </h2>
-            {dayData.dayTransactions.filter((t) => t.type === 'expense')
-              .length > 0 ? (
-              dayData.dayTransactions
-                .filter((t) => t.type === 'expense')
-                .map((trans) => {
-                  const isFutureFiscalMonth =
-                    trans.fiscalMonth &&
-                    trans.fiscalMonth !== currentFiscalMonth
-                  return (
-                    <div
-                      key={trans.id}
-                      className={`transaction-card expense ${trans.isInvoicePayment ? 'invoice-payment clickable' : ''}`}
-                      onClick={() =>
-                        !!trans.isInvoicePayment && handleInvoiceClick(trans.id)
-                      }
-                    >
-                      <div className="transaction-info">
-                        {trans.isInvoicePayment && (
-                          <CreditCard size={16} className="invoice-icon" />
-                        )}
-                        <p className="transaction-description">
-                          {trans.description}
-                        </p>
-                        <div className="transaction-tags">
+            {(dayData.dayTransactions.filter((t) => t.type === 'expense').length > 0 || dayData.installmentGroups.length > 0) ? (
+              <>
+                {/* Transações normais e faturas */}
+                {dayData.dayTransactions
+                  .filter((t) => t.type === 'expense')
+                  .map((trans) => {
+                    const isFutureFiscalMonth =
+                      trans.fiscalMonth &&
+                      trans.fiscalMonth !== currentFiscalMonth
+                    return (
+                      <div
+                        key={trans.id}
+                        className={`transaction-card expense ${trans.isInvoicePayment ? 'invoice-payment clickable' : ''}`}
+                        onClick={() =>
+                          !!trans.isInvoicePayment && handleInvoiceClick(trans.id)
+                        }
+                      >
+                        <div className="transaction-info">
+                          {trans.isInvoicePayment && (
+                            <CreditCard size={16} className="invoice-icon" />
+                          )}
+                          <p className="transaction-description">
+                            {trans.description}
+                          </p>
+                          <div className="transaction-tags">
+                            {!trans.isInvoicePayment && (
+                              <span className="transaction-category">
+                                {getCategoryName(trans.categoryId)}
+                              </span>
+                            )}
+                            {trans.paymentMethod === 'credit' && (
+                              <span className="credit-card-tag">
+                                <CreditCard size={12} />
+                                {getCardName(trans.cardId)}
+                              </span>
+                            )}
+                            {isFutureFiscalMonth && (
+                              <span className="future-fiscal-month-tag">
+                                {(() => {
+                                  const [ano, mes] = trans.fiscalMonth.split('-')
+                                  const nomeMes = new Date(
+                                    ano,
+                                    mes - 1,
+                                  ).toLocaleString('pt-BR', { month: 'long' })
+                                  return `${nomeMes}`
+                                })()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="transaction-info-right">
+                          <p className="transaction-value">
+                            - R$ {trans.value.toFixed(2)}
+                          </p>
                           {!trans.isInvoicePayment && (
-                            <span className="transaction-category">
-                              {getCategoryName(trans.categoryId)}
-                            </span>
-                          )}
-                          {trans.paymentMethod === 'credit' && (
-                            <span className="credit-card-tag">
-                              <CreditCard size={12} />
-                              {getCardName(trans.cardId)}
-                            </span>
-                          )}
-                          {isFutureFiscalMonth && (
-                            <span className="future-fiscal-month-tag">
-                              {(() => {
-                                const [ano, mes] = trans.fiscalMonth.split('-')
-                                const nomeMes = new Date(
-                                  ano,
-                                  mes - 1,
-                                ).toLocaleString('pt-BR', { month: 'long' })
-                                return `${nomeMes}`
-                              })()}
-                            </span>
+                            <div className="transaction-actions">
+                              <button
+                                onClick={() => handleEditClick(trans)}
+                                title="Editar"
+                              >
+                                <FileText size={18} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteClick(trans)}
+                                title="Excluir"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
-                      <div className="transaction-info-right">
-                        <p className="transaction-value">
-                          - R$ {trans.value.toFixed(2)}
-                        </p>
-                        {!trans.isInvoicePayment && (
-                          <div className="transaction-actions">
-                            <button
-                              onClick={() => handleEditClick(trans)}
-                              title="Editar"
-                            >
-                              <FileText size={18} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClick(trans)}
-                              title="Excluir"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        )}
+                    )
+                  })}
+                
+                {/* Grupos de parcelas agrupadas */}
+                {dayData.installmentGroups.map((group) => (
+                  <div
+                    key={group.installmentId}
+                    className="transaction-card expense installment-group"
+                  >
+                    <div className="transaction-info">
+                      <p className="transaction-description">
+                        {group.description}
+                      </p>
+                      <div className="transaction-tags">
+                        <span className="transaction-category">
+                          {getCategoryName(group.categoryId)}
+                        </span>
+                        <span className="credit-card-tag">
+                          <CreditCard size={12} />
+                          {getCardName(group.cardId)}
+                        </span>
+                        <span className="installment-tag">
+                          Parcelado em {group.installments}x
+                        </span>
                       </div>
                     </div>
-                  )
-                })
+                    <div className="transaction-info-right">
+                      <p className="transaction-value">
+                        - R$ {group.totalValue.toFixed(2)}
+                      </p>
+                      <div className="transaction-actions">
+                        <button
+                          onClick={() => handleEditClick(group.parcels[0])}
+                          title="Editar Primeira Parcela"
+                        >
+                          <FileText size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
             ) : (
               <p className="no-transactions">Nenhuma despesa neste dia.</p>
             )}

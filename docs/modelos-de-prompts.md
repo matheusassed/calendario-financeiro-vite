@@ -323,6 +323,8 @@ Fazer code review das mudanças em NotificationBanner.jsx no projeto Calendário
 - [ ] Mensagens em português (pt-BR)
 - [ ] Acessibilidade considerada
 - [ ] Performance não degradada
+- [ ] Logs de debug removidos ou convertidos para logger.js
+- [ ] Nomenclatura alinhada com modelos documentados
 
 #### Para Mudanças em Dados
 - [ ] Modelos atualizados em docs/dados-e-modelagem.md

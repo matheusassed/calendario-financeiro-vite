@@ -17,27 +17,38 @@
 - `name: string`
 - `brand: string`
 - `last4: string`
-- `closingDay: number`  (dia de fechamento)
-- `dueDay: number`      (dia de vencimento)
+- `invoiceCloseDay: number`  (dia de fechamento da fatura)
+- `dueDay: number`           (dia de vencimento)
 - `ownerId: string`
 
 ### Faturas (`invoices/{invoiceId}`)
 - `cardId: string`
 - `month: string`       (YYYY-MM)
-- `amount: number`
+- `total: number`       (valor total da fatura)
 - `status: 'open' | 'closed' | 'paid'`
 
 ### Transações (`transactions/{transactionId}`)
 - `type: 'income' | 'expense'`
-- `title: string`
-- `amount: number`
-- `date: string`        (YYYY-MM-DD)
+- `description: string`  (título/descrição da transação)
+- `value: number`        (valor da transação)
+- `date: string`         (YYYY-MM-DD)
 - `categoryId: string`
 - `notes?: string`
-- `cardId?: string`     (para despesas no cartão)
+- `cardId?: string`      (para despesas no cartão)
 - `invoiceId?: string`
 - `recurrence?: Recurrence`
 - `ownerId: string`
+
+### Transações Parceladas
+- `isInstallment: boolean`           (indica se é uma parcela)
+- `installmentId: string`            (ID único da série de parcelas)
+- `installmentIndex: number`         (índice da parcela: 1, 2, 3...)
+- `installmentTotal: number`         (total de parcelas na série)
+- `installmentValue: number`         (valor desta parcela específica)
+- `totalValue: number`               (valor total da compra original)
+- `originalPurchaseDate: string`     (data da compra original)
+- `invoiceDate: Date`                (data da fatura desta parcela)
+- `fiscalMonth: string`              (mês fiscal da fatura)
 
 ### Tipo `Recurrence`
 ```ts

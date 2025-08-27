@@ -676,10 +676,22 @@ body {
 }
 
 .transaction-value {
-  font-weight: 500;
+  font-weight: 600;
   font-size: 1rem;
   min-width: 80px;
   text-align: right;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.installment-badge {
+  font-size: 0.75rem;
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #666;
 }
 
 .transaction-actions {
@@ -953,6 +965,16 @@ body {
   background-color: #dbeafe; /* blue-100 */
   padding: 0.1rem 0.5rem;
   border-radius: 12px;
+}
+
+.installment-tag {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #ffffff; /* white */
+  background-color: var(--primary-color, #3b82f6);/* blue-700 */
+  padding: 0.1rem 0.5rem;
+  border-radius: 12px;
+  align-self: flex-start;
 }
 
 /* TRANSACTION TAGS */
@@ -1755,3 +1777,409 @@ body {
 }
 
 /* RECURRENCE CONFIG */
+
+
+/* ===== ESTILOS PARA PARCELAMENTO ===== */
+
+/* Componente InstallmentConfig */
+.installment-config {
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  background: var(--card-bg, #ffffff);
+}
+
+.installment-config.disabled {
+  opacity: 0.6;
+  background: var(--disabled-bg, #f8f9fa);
+}
+
+.installment-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.installment-toggle .toggle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  background: var(--bg-white, #ffffff);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-muted, #64748b);
+}
+
+.installment-toggle .toggle-button:hover {
+  border-color: var(--primary-color, #3b82f6);
+}
+
+.installment-toggle .toggle-button.active {
+  background: var(--primary-color, #3b82f6);
+  border-color: var(--primary-color, #3b82f6);
+  color: white;
+}
+
+.installment-toggle .toggle-label {
+  font-weight: 500;
+  color: var(--text-primary, #1e293b);
+}
+
+.installment-toggle .toggle-label.disabled {
+  color: var(--text-muted, #64748b);
+}
+
+.installment-toggle .disabled-note {
+  font-size: 0.875rem;
+  color: var(--text-muted, #64748b);
+  font-style: italic;
+}
+
+.installment-toggle .validation-icon {
+  margin-left: auto;
+}
+
+.installment-toggle .validation-icon.valid {
+  color: var(--success-color, #10b981);
+}
+
+.installment-toggle .validation-icon.invalid {
+  color: var(--error-color, #ef4444);
+}
+
+/* Configurações do Parcelamento */
+.installment-settings {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light, #f1f5f9);
+}
+
+.card-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-light, #f8fafc);
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+}
+
+.card-info svg {
+  color: var(--primary-color, #3b82f6);
+}
+
+.card-close-day {
+  margin-left: auto;
+  color: var(--text-muted, #64748b);
+}
+
+/* Cálculo de Parcelas */
+.installment-calculation {
+  margin-bottom: 16px;
+}
+
+.currency-display {
+  padding: 8px 12px;
+  background: var(--bg-light, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  font-weight: 600;
+  color: var(--primary-color, #3b82f6);
+}
+
+.calculation-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: var(--success-bg, #f0fdf4);
+  border: 1px solid var(--success-border, #bbf7d0);
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.calculation-result svg {
+  color: var(--success-color, #10b981);
+}
+
+.remainder-note {
+  color: var(--text-muted, #64748b);
+  font-size: 0.8rem;
+}
+
+/* Preview das Faturas */
+.preview-section {
+  margin-top: 16px;
+}
+
+.preview-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: none;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  color: var(--text-primary, #1e293b);
+  width: 100%;
+}
+
+.preview-toggle:hover {
+  background: var(--bg-light, #f8fafc);
+  border-color: var(--primary-color, #3b82f6);
+}
+
+.preview-invoices {
+  margin-top: 12px;
+  border: 1px solid var(--border-light, #f1f5f9);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.preview-invoice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light, #f1f5f9);
+  font-size: 0.875rem;
+}
+
+.preview-invoice:last-child {
+  border-bottom: none;
+}
+
+.preview-invoice:nth-child(even) {
+  background: var(--bg-light, #f8fafc);
+}
+
+.invoice-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.invoice-month {
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.installment-number {
+  color: var(--text-muted, #64748b);
+  font-size: 0.8rem;
+}
+
+.installment-value {
+  font-weight: 600;
+  color: var(--primary-color, #3b82f6);
+}
+
+.preview-more {
+  padding: 8px 16px;
+  text-align: center;
+  color: var(--text-muted, #64748b);
+  font-size: 0.8rem;
+  font-style: italic;
+  background: var(--bg-light, #f8fafc);
+}
+
+/* Resumo do Parcelamento */
+.installment-summary {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--bg-light, #f8fafc);
+  border-radius: 6px;
+  border: 1px solid var(--border-light, #f1f5f9);
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+}
+
+.summary-item:last-child {
+  margin-bottom: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-light, #f1f5f9);
+}
+
+.summary-item strong {
+  color: var(--text-primary, #1e293b);
+}
+
+/* Erros de Validação */
+.validation-errors {
+  margin-top: 12px;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--error-bg, #fef2f2);
+  border: 1px solid var(--error-border, #fecaca);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+  color: var(--error-color, #dc2626);
+}
+
+.error-message:last-child {
+  margin-bottom: 0;
+}
+
+.error-message svg {
+  flex-shrink: 0;
+}
+
+/* Aviso para Edição de Parcelas */
+.installment-edit-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: var(--warning-bg, #fffbeb);
+  border: 1px solid var(--warning-border, #fed7aa);
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.installment-edit-notice svg {
+  color: var(--warning-color, #f59e0b);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.installment-edit-notice strong {
+  color: var(--warning-color, #f59e0b);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.installment-edit-notice p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted, #64748b);
+}
+
+/* Identificação Visual de Parcelas */
+.transaction-card.installment {
+  position: relative;
+}
+
+.transaction-card.installment::before {
+  content: "📦";
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.transaction-card.installment .transaction-description {
+  padding-left: 24px;
+}
+
+/* Estilo para grupos de parcelas agrupadas */
+.transaction-card.installment-group {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-left: 4px solid var(--primary-color, #3b82f6);
+  position: relative;
+}
+
+.transaction-card.installment-group::before {
+  content: "📦";
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.transaction-card.installment-group .transaction-description {
+  padding-left: 28px;
+  font-weight: 600;
+  color: var(--text-dark, #1f2937);
+}
+
+.installment-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--primary-light, #dbeafe);
+  color: var(--primary-color, #3b82f6);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: 8px;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .installment-calculation .form-group-row {
+    flex-direction: column;
+  }
+  
+  .preview-invoice {
+    padding: 10px 12px;
+  }
+  
+  .invoice-info {
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+  }
+  
+  .installment-value {
+    margin-top: 4px;
+  }
+  
+  .installment-summary {
+    padding: 12px;
+  }
+  
+  .summary-item {
+    font-size: 0.8rem;
+  }
+}
+
+/* Estados de Loading */
+.installment-config.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.installment-config.loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid var(--border-color, #e2e8f0);
+  border-top-color: var(--primary-color, #3b82f6);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
