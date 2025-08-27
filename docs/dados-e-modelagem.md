@@ -39,6 +39,17 @@
 - `recurrence?: Recurrence`
 - `ownerId: string`
 
+### Transações Parceladas
+- `isInstallment: boolean`           (indica se é uma parcela)
+- `installmentId: string`            (ID único da série de parcelas)
+- `installmentIndex: number`         (índice da parcela: 1, 2, 3...)
+- `installmentTotal: number`         (total de parcelas na série)
+- `installmentValue: number`         (valor desta parcela específica)
+- `totalValue: number`               (valor total da compra original)
+- `originalPurchaseDate: string`     (data da compra original)
+- `invoiceDate: Date`                (data da fatura desta parcela)
+- `fiscalMonth: string`              (mês fiscal da fatura)
+
 ### Tipo `Recurrence`
 ```ts
 interface Recurrence {
