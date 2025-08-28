@@ -63,6 +63,28 @@ Análise completa realizada em **Janeiro 2025** sobre o código fonte do projeto
 
 ---
 
+### **5. Tasklist da Fase 1 (Concluída)**
+📄 [`fase-1-tasklist.md`](./fase-1-tasklist.md)
+
+**Conteúdo**: Tasklist detalhada da Fase 1 implementada
+- **Sprint 1**: Estabilidade e Firebase ✅
+- **Sprint 2**: Performance e Otimizações ✅
+- **Correções Adicionais**: Bug de data de vencimento ✅
+- **Status**: 🟢 **100% CONCLUÍDA**
+
+---
+
+### **6. Tasklist da Fase 2 (Em Andamento)**
+📄 [`fase-2-tasklist.md`](./fase-2-tasklist.md)
+
+**Conteúdo**: Tasklist detalhada da Fase 2 em implementação
+- **Sprint 3**: Validações e Tratamento de Dados
+- **Sprint 4**: Console.log e Duplicações
+- **Objetivo**: Elevar score de 7.5+ para 7.8+
+- **Status**: 🔴 **INICIADA**
+
+---
+
 ## 🎯 Principais Descobertas
 
 ### **🚨 Problemas Críticos Identificados**
