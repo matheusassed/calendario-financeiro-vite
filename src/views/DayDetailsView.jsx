@@ -114,28 +114,50 @@ export function DayDetailsView({
     const realDayTransactions = transactions.filter((t) => {
       // Para todas as transações, usar a data padrão (que para parcelas é a data da compra)
       const tDate = t.date
-      
+
       // Garantir que a comparação de datas seja feita corretamente, considerando apenas dia/mês/ano
       // e ignorando problemas de timezone
-      const tDateNormalized = new Date(tDate.getFullYear(), tDate.getMonth(), tDate.getDate())
-      const selectedDateNormalized = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
-      
+      const tDateNormalized = new Date(
+        tDate.getFullYear(),
+        tDate.getMonth(),
+        tDate.getDate(),
+      )
+      const selectedDateNormalized = new Date(
+        selectedDate.getFullYear(),
+        selectedDate.getMonth(),
+        selectedDate.getDate(),
+      )
+
       return tDateNormalized.getTime() === selectedDateNormalized.getTime()
     })
 
     // Separar transações normais de parcelas
-    const normalTransactions = realDayTransactions.filter(t => !t.isInstallment)
-    const installmentTransactions = realDayTransactions.filter(t => t.isInstallment)
-    
+    const normalTransactions = realDayTransactions.filter(
+      (t) => !t.isInstallment,
+    )
+    const installmentTransactions = realDayTransactions.filter(
+      (t) => t.isInstallment,
+    )
+
     // Agrupar parcelas por compra
-    const installmentGroups = groupInstallmentsByPurchase(installmentTransactions)
+    const installmentGroups = groupInstallmentsByPurchase(
+      installmentTransactions,
+    )
     const dueInvoicesToday = invoices.filter((inv) => {
       const dueDate = inv.dueDate
-      
+
       // Garantir que a comparação de datas seja feita corretamente
-      const dueDateNormalized = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate())
-      const selectedDateNormalized = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
-      
+      const dueDateNormalized = new Date(
+        dueDate.getFullYear(),
+        dueDate.getMonth(),
+        dueDate.getDate(),
+      )
+      const selectedDateNormalized = new Date(
+        selectedDate.getFullYear(),
+        selectedDate.getMonth(),
+        selectedDate.getDate(),
+      )
+
       return dueDateNormalized.getTime() === selectedDateNormalized.getTime()
     })
     const invoiceTransactions = dueInvoicesToday.map((inv) => ({
@@ -145,7 +167,7 @@ export function DayDetailsView({
       value: inv.total,
       isInvoicePayment: true,
     }))
-    
+
     // Combinar transações normais, grupos de parcelas e faturas
     const dayTransactions = [...normalTransactions, ...invoiceTransactions]
     const dailyRevenues = dayTransactions
@@ -153,11 +175,12 @@ export function DayDetailsView({
       .reduce((sum, t) => sum + t.value, 0)
     // CORREÇÃO: Desconsiderar transações de cartão de crédito e parcelas no somatório do dia
     const dailyExpenses = dayTransactions
-      .filter((t) => 
-        t.type === 'expense' && 
-        t.paymentMethod !== 'credit' && 
-        !t.isInstallment && // Não contabilizar parcelas
-        !t.isInstallmentMaster // Não contabilizar transações principais de parcelamento
+      .filter(
+        (t) =>
+          t.type === 'expense' &&
+          t.paymentMethod !== 'credit' &&
+          !t.isInstallment && // Não contabilizar parcelas
+          !t.isInstallmentMaster, // Não contabilizar transações principais de parcelamento
       )
       .reduce((sum, t) => sum + t.value, 0)
 
@@ -207,7 +230,13 @@ export function DayDetailsView({
       cumulativeBalance = balanceFromTransactions - balanceFromInvoices
     }
 
-    return { dayTransactions, installmentGroups, dailyRevenues, dailyExpenses, cumulativeBalance }
+    return {
+      dayTransactions,
+      installmentGroups,
+      dailyRevenues,
+      dailyExpenses,
+      cumulativeBalance,
+    }
   }, [selectedDate, transactions, invoices, getCardName, viewMode])
 
   if (!selectedDate) {
@@ -559,7 +588,8 @@ export function DayDetailsView({
             <h2 className="section-title">
               <MinusCircle size={22} /> Despesas
             </h2>
-            {(dayData.dayTransactions.filter((t) => t.type === 'expense').length > 0 || dayData.installmentGroups.length > 0) ? (
+            {dayData.dayTransactions.filter((t) => t.type === 'expense')
+              .length > 0 || dayData.installmentGroups.length > 0 ? (
               <>
                 {/* Transações normais e faturas */}
                 {dayData.dayTransactions
@@ -573,7 +603,8 @@ export function DayDetailsView({
                         key={trans.id}
                         className={`transaction-card expense ${trans.isInvoicePayment ? 'invoice-payment clickable' : ''}`}
                         onClick={() =>
-                          !!trans.isInvoicePayment && handleInvoiceClick(trans.id)
+                          !!trans.isInvoicePayment &&
+                          handleInvoiceClick(trans.id)
                         }
                       >
                         <div className="transaction-info">
@@ -598,7 +629,8 @@ export function DayDetailsView({
                             {isFutureFiscalMonth && (
                               <span className="future-fiscal-month-tag">
                                 {(() => {
-                                  const [ano, mes] = trans.fiscalMonth.split('-')
+                                  const [ano, mes] =
+                                    trans.fiscalMonth.split('-')
                                   const nomeMes = new Date(
                                     ano,
                                     mes - 1,
@@ -633,7 +665,7 @@ export function DayDetailsView({
                       </div>
                     )
                   })}
-                
+
                 {/* Grupos de parcelas agrupadas */}
                 {dayData.installmentGroups.map((group) => (
                   <div
