@@ -7,7 +7,7 @@ const LOG_LEVELS = {
   ERROR: 'error',
   WARN: 'warn',
   INFO: 'info',
-  DEBUG: 'debug'
+  DEBUG: 'debug',
 }
 
 const isDevelopment = import.meta.env.DEV
@@ -19,22 +19,22 @@ export const logger = {
   error: (message, ...args) => {
     console.error(`[ERROR] ${message}`, ...args)
   },
-  
+
   warn: (message, ...args) => {
     console.warn(`[WARN] ${message}`, ...args)
   },
-  
+
   info: (message, ...args) => {
     if (isDevelopment) {
       console.info(`[INFO] ${message}`, ...args)
     }
   },
-  
+
   debug: (message, ...args) => {
     if (isDevelopment) {
       console.log(`[DEBUG] ${message}`, ...args)
     }
-  }
+  },
 }
 
 /**
@@ -45,7 +45,7 @@ export const recurrenceLogger = {
     if (isDevelopment) {
       console.log(`[RECURRENCE] ${message}`, ...args)
     }
-  }
+  },
 }
 
 /**
@@ -56,5 +56,5 @@ export const installmentLogger = {
     if (isDevelopment) {
       console.log(`[INSTALLMENT] ${message}`, ...args)
     }
-  }
+  },
 }

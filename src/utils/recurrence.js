@@ -9,7 +9,7 @@
 export const RECURRENCE_TYPES = {
   MONTHLY: 'monthly',
   YEARLY: 'yearly',
-  CUSTOM: 'custom'
+  CUSTOM: 'custom',
 }
 
 /**
@@ -18,7 +18,7 @@ export const RECURRENCE_TYPES = {
 export const EDIT_OPTIONS = {
   THIS_ONLY: 'this_only',
   THIS_AND_FUTURE: 'this_and_future',
-  ALL: 'all'
+  ALL: 'all',
 }
 
 /**
@@ -68,7 +68,7 @@ export const validateRecurrenceRule = (rule) => {
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   }
 }
 
@@ -164,7 +164,7 @@ export const isRecurringTransaction = (transaction) => {
  */
 export const getRecurrenceSeries = (recurrenceId, allTransactions) => {
   return allTransactions
-    .filter(t => t.recurrenceId === recurrenceId)
+    .filter((t) => t.recurrenceId === recurrenceId)
     .sort((a, b) => (a.recurrenceIndex || 0) - (b.recurrenceIndex || 0))
 }
 
@@ -175,7 +175,11 @@ export const getRecurrenceSeries = (recurrenceId, allTransactions) => {
  * @param {Array} allTransactions - Todas as transações
  * @returns {Array} - IDs das transações que devem ser afetadas
  */
-export const getAffectedInstances = (transaction, editOption, allTransactions) => {
+export const getAffectedInstances = (
+  transaction,
+  editOption,
+  allTransactions,
+) => {
   // Validações melhoradas
   if (!transaction) {
     console.error('Transação é obrigatória')
@@ -219,12 +223,12 @@ export const getAffectedInstances = (transaction, editOption, allTransactions) =
 
     case EDIT_OPTIONS.THIS_AND_FUTURE:
       result = series
-        .filter(t => (t.recurrenceIndex || 0) >= currentIndex)
-        .map(t => t.id)
+        .filter((t) => (t.recurrenceIndex || 0) >= currentIndex)
+        .map((t) => t.id)
       break
 
     case EDIT_OPTIONS.ALL:
-      result = series.map(t => t.id)
+      result = series.map((t) => t.id)
       break
 
     default:
@@ -232,7 +236,7 @@ export const getAffectedInstances = (transaction, editOption, allTransactions) =
       result = [transaction.id]
   }
 
-  return result.filter(id => id) // Remover IDs inválidos/undefined
+  return result.filter((id) => id) // Remover IDs inválidos/undefined
 }
 
 /**
@@ -249,7 +253,7 @@ export const createRecurrenceInstance = (
   rule,
   instanceDate,
   index,
-  recurrenceId
+  recurrenceId,
 ) => {
   const { id, ...cleanBaseTransaction } = baseTransaction
 
@@ -263,7 +267,7 @@ export const createRecurrenceInstance = (
     // Recalcular o mês fiscal baseado na nova data
     fiscalMonth: formatFiscalMonth(instanceDate),
     // Adicionar timestamp de criação
-    createdAt: new Date()
+    createdAt: new Date(),
   }
 }
 
@@ -337,7 +341,7 @@ export const updateRecurringSeries = async (
   editOption,
   allTransactions,
   db,
-  collectionPath
+  collectionPath,
 ) => {
   // Validações de entrada
   if (!editedTransaction || !editedTransaction.id) {
@@ -359,7 +363,11 @@ export const updateRecurringSeries = async (
 
   const { writeBatch, doc } = await import('firebase/firestore')
 
-  const affectedIds = getAffectedInstances(editedTransaction, editOption, allTransactions)
+  const affectedIds = getAffectedInstances(
+    editedTransaction,
+    editOption,
+    allTransactions,
+  )
 
   if (affectedIds.length === 0) {
     console.warn('Nenhuma transação afetada encontrada')
@@ -367,7 +375,9 @@ export const updateRecurringSeries = async (
   }
 
   // CORREÇÃO: Obter a transação original (sem edições) e calcular diferença de data
-  const originalTransaction = allTransactions.find(t => t.id === editedTransaction.id)
+  const originalTransaction = allTransactions.find(
+    (t) => t.id === editedTransaction.id,
+  )
   if (!originalTransaction) {
     throw new Error('Transação original não encontrada')
   }
@@ -401,7 +411,9 @@ export const updateRecurringSeries = async (
 
     try {
       const docRef = doc(db, collectionPath, transactionId)
-      const targetTransaction = allTransactions.find(t => t.id === transactionId)
+      const targetTransaction = allTransactions.find(
+        (t) => t.id === transactionId,
+      )
 
       if (!targetTransaction) {
         console.warn(`Transação alvo não encontrada para ID: ${transactionId}`)
@@ -414,23 +426,24 @@ export const updateRecurringSeries = async (
         finalData = {
           ...updateData,
           date: newDate,
-          fiscalMonth: formatFiscalMonth(newDate)
+          fiscalMonth: formatFiscalMonth(newDate),
         }
       } else {
         // Para "esta e futuras" ou "todas" - aplicar a DIFERENÇA de data
         const targetOriginalDate = targetTransaction.date
-        const calculatedDate = new Date(targetOriginalDate.getTime() + dateDifference)
+        const calculatedDate = new Date(
+          targetOriginalDate.getTime() + dateDifference,
+        )
 
         finalData = {
           ...updateData,
           date: calculatedDate,
-          fiscalMonth: formatFiscalMonth(calculatedDate)
+          fiscalMonth: formatFiscalMonth(calculatedDate),
         }
       }
 
       batch.update(docRef, finalData)
       successCount++
-
     } catch (error) {
       console.error(`Erro ao processar transação ${transactionId}:`, error)
     }
@@ -459,7 +472,7 @@ export const breakRecurrenceSeries = async (
   editOption,
   allTransactions,
   db,
-  collectionPath
+  collectionPath,
 ) => {
   const { writeBatch, doc } = await import('firebase/firestore')
 
@@ -482,7 +495,7 @@ export const breakRecurrenceSeries = async (
       recurrenceIndex: null,
       recurrenceRule: null,
       isRecurring: false,
-      fiscalMonth: formatFiscalMonth(independentData.date || transaction.date)
+      fiscalMonth: formatFiscalMonth(independentData.date || transaction.date),
     }
 
     batch.update(docRef, finalData)
@@ -492,9 +505,14 @@ export const breakRecurrenceSeries = async (
 
   if (editOption === EDIT_OPTIONS.THIS_AND_FUTURE) {
     // Criar nova série para esta e futuras MANTENDO o padrão de datas
-    const series = getRecurrenceSeries(transaction.recurrenceId, allTransactions)
+    const series = getRecurrenceSeries(
+      transaction.recurrenceId,
+      allTransactions,
+    )
     const currentIndex = transaction.recurrenceIndex || 0
-    const affectedTransactions = series.filter(t => (t.recurrenceIndex || 0) >= currentIndex)
+    const affectedTransactions = series.filter(
+      (t) => (t.recurrenceIndex || 0) >= currentIndex,
+    )
 
     // CORREÇÃO: Calcular diferença de data para manter padrão
     const originalDate = transaction.date
@@ -512,14 +530,16 @@ export const breakRecurrenceSeries = async (
 
       // CORREÇÃO: Aplicar diferença de data mantendo o padrão da série
       const targetOriginalDate = t.date
-      const calculatedDate = new Date(targetOriginalDate.getTime() + dateDifference)
+      const calculatedDate = new Date(
+        targetOriginalDate.getTime() + dateDifference,
+      )
 
       const updatedData = {
         ...baseData,
         recurrenceId: newRecurrenceId,
         recurrenceIndex: index,
         date: calculatedDate,
-        fiscalMonth: formatFiscalMonth(calculatedDate)
+        fiscalMonth: formatFiscalMonth(calculatedDate),
       }
 
       batch.update(docRef, updatedData)
@@ -530,7 +550,13 @@ export const breakRecurrenceSeries = async (
   }
 
   // Para ALL, usar a função normal de update (já corrigida acima)
-  return updateRecurringSeries(newData, editOption, allTransactions, db, collectionPath)
+  return updateRecurringSeries(
+    newData,
+    editOption,
+    allTransactions,
+    db,
+    collectionPath,
+  )
 }
 
 /**
