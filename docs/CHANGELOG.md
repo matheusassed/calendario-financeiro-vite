@@ -1,5 +1,29 @@
 # Changelog
 
+## [2025-08-28] - Correção de Bug: Data de Vencimento de Fatura
+
+### 🐛 Bug Corrigido
+- **Data de Vencimento de Fatura Incorreta**: Corrigido bug onde cartões com vencimento no início do mês (dias 1-5) criavam faturas no mês passado
+- **Lógica Inteligente**: Sistema agora identifica automaticamente cartões com vencimento no início do mês e aplica regra especial
+- **Comportamento Correto**: Faturas são sempre criadas no mês seguinte ao fechamento para cartões com vencimento dias 1-5
+
+### 🔧 Melhorias Técnicas
+- **Nova Função Utilitária**: `calculateInvoiceMonth()` em `utils/helpers.js` para cálculo consistente de mês de fatura
+- **Lógica Centralizada**: Mesma regra aplicada para compras simples e parceladas
+- **Compatibilidade Total**: Não quebra funcionalidades existentes para cartões com vencimento normal
+
+### 📁 Arquivos Modificados
+- `src/utils/helpers.js` - Nova função `calculateInvoiceMonth`
+- `src/utils/installments.js` - Função `getInstallmentDates` corrigida
+- `src/views/ExpenseForm.jsx` - Lógica de compra simples corrigida
+
+### ✅ Status
+- **Bug**: 100% Corrigido
+- **Testes**: Funcionando conforme esperado
+- **Documentação**: Atualizada com solução
+
+---
+
 ## [2025-08-27] - Sistema de Parcelas - Agrupamento Visual
 
 ### ✨ Funcionalidades Adicionadas
@@ -65,13 +89,3 @@
 - Tratamento correto de timezone em `getInstallmentDates()`
 - Filtro adequado para excluir parcelas do somatório diário
 - Normalização de datas no `DayDetailsView`
-
-### 📁 Arquivos Corrigidos
-- `src/utils/installments.js`
-- `src/views/ExpenseForm.jsx`
-- `src/views/DayDetailsView.jsx`
-
-### ✅ Status
-- **Correções**: 100% Implementadas
-- **Testes**: Funcionando conforme esperado
-- **Documentação**: Atualizada com soluções

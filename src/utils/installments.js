@@ -98,11 +98,18 @@ export const getInstallmentDates = (purchaseDate, card, installments) => {
   const purchaseDateObj = new Date(purchaseDate)
   purchaseDateObj.setHours(12, 0, 0, 0) // Fixar horário para evitar problemas de timezone
 
-  // Determinar em qual fatura a primeira parcela vai entrar
+  // CORREÇÃO: Lógica melhorada para determinar o mês da primeira fatura
   let firstInvoiceMonth = new Date(purchaseDateObj)
-
+  
   // Se a compra foi depois do fechamento, vai para a próxima fatura
   if (purchaseDateObj.getDate() > card.invoiceCloseDay) {
+    firstInvoiceMonth.setMonth(firstInvoiceMonth.getMonth() + 1)
+  }
+  
+  // CORREÇÃO: Se o vencimento é no início do mês (dias 1-5), 
+  // a fatura deve ser sempre do mês seguinte ao fechamento
+  if (card.invoiceDueDay <= 5) {
+    // Vencimento no início do mês = fatura sempre do mês seguinte
     firstInvoiceMonth.setMonth(firstInvoiceMonth.getMonth() + 1)
   }
 

@@ -222,10 +222,11 @@
 
 **Sprint 1**: 🟢 CONCLUÍDO ✅ (3/3 tarefas concluídas)  
 **Sprint 2**: 🟢 CONCLUÍDO ✅ (3/3 tarefas concluídas)  
+**Correções Adicionais**: 🟢 CONCLUÍDO ✅ (1/1 bug crítico corrigido)  
 **Testes**: 🟢 CONCLUÍDO ✅ (6/6 tarefas concluídas)  
 **Validação**: 🔴 PENDENTE (0/8 métricas validadas)
 
-**Progresso Geral**: 100% (6/6 tarefas principais)  
+**Progresso Geral**: 100% (7/7 tarefas principais)  
 **Tempo Estimado Restante**: 0 horas  
 **Status**: 🟢 FASE 1 CONCLUÍDA ✅
 
@@ -235,8 +236,19 @@
 
 **Semana 1 (Sprint 1)**: Estabilidade e Firebase  
 **Semana 2 (Sprint 2)**: Performance e Otimizações  
-**Semana 3**: Testes finais e validação  
+**Semana 3**: Correções adicionais e testes finais  
 **Entrega**: Final da Semana 3
+
+---
+
+## 🐛 **CORREÇÕES ADICIONAIS IMPLEMENTADAS**
+
+### **Bug: Data de Vencimento de Fatura Incorreta** ✅ RESOLVIDO
+- **Descrição**: Cartões com vencimento no início do mês criavam faturas no mês passado
+- **Solução**: Nova função `calculateInvoiceMonth()` com lógica inteligente
+- **Arquivos**: `src/utils/helpers.js`, `src/utils/installments.js`, `src/views/ExpenseForm.jsx`
+- **Status**: 🟢 **CONCLUÍDO** ✅
+- **Tempo**: 2 horas
 
 ---
 

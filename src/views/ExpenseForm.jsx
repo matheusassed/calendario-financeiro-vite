@@ -12,7 +12,7 @@ import {
   serverTimestamp,
   increment,
 } from 'firebase/firestore'
-import { formatFiscalMonth, calculateCloseDate } from '../utils/helpers'
+import { formatFiscalMonth, calculateCloseDate, calculateInvoiceMonth } from '../utils/helpers'
 import toast from 'react-hot-toast'
 import { RecurrenceConfig } from '../components/RecurrenceConfig'
 import {
@@ -363,12 +363,11 @@ export function ExpenseForm({
             { id: loadingToast },
           )
         } else {
-          // === COMPRA SIMPLES NO CARTÃO (lógica existente) ===
+          // === COMPRA SIMPLES NO CARTÃO (lógica corrigida) ===
           const card = creditCards.find((c) => c.id === formData.cardId)
-          let invoiceMonthDate = new Date(transactionDate)
-          if (transactionDate.getDate() > card.invoiceCloseDay) {
-            invoiceMonthDate.setMonth(invoiceMonthDate.getMonth() + 1)
-          }
+          
+          // CORREÇÃO: Usar a nova função utilitária para calcular o mês da fatura
+          const invoiceMonthDate = calculateInvoiceMonth(transactionDate, card)
           const invoiceMonthStr = formatFiscalMonth(invoiceMonthDate)
 
           const invoiceQuery = query(

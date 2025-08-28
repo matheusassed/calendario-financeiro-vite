@@ -71,3 +71,31 @@ export const calculateCloseDate = (settings, referenceDate) => {
 
   return new Date(year, month, 25) // Fallback
 }
+
+/**
+ * NOVO: Calcula o mês da fatura para um cartão de crédito
+ * @param {Date} transactionDate - Data da transação
+ * @param {Object} card - Dados do cartão de crédito
+ * @returns {Date} - Data do mês da fatura
+ */
+export const calculateInvoiceMonth = (transactionDate, card) => {
+  if (!transactionDate || !card) {
+    return new Date()
+  }
+
+  let invoiceMonthDate = new Date(transactionDate)
+  
+  // Se a compra foi depois do fechamento, vai para a próxima fatura
+  if (transactionDate.getDate() > card.invoiceCloseDay) {
+    invoiceMonthDate.setMonth(invoiceMonthDate.getMonth() + 1)
+  }
+  
+  // CORREÇÃO: Se o vencimento é no início do mês (dias 1-5), 
+  // a fatura deve ser sempre do mês seguinte ao fechamento
+  if (card.invoiceDueDay <= 5) {
+    // Vencimento no início do mês = fatura sempre do mês seguinte
+    invoiceMonthDate.setMonth(invoiceMonthDate.getMonth() + 1)
+  }
+  
+  return invoiceMonthDate
+}
