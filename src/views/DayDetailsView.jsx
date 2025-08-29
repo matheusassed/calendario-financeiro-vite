@@ -14,6 +14,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { formatFiscalMonth } from '../utils/helpers'
+import { logger } from '../utils/logger'
 import { ConfirmModal } from '../components/ConfirmModal'
 import { Modal } from '../components/Modal'
 import { ExpenseForm } from './ExpenseForm'
@@ -278,7 +279,7 @@ export function DayDetailsView({
       )
       toast.success('Transação excluída com sucesso!', { id: loadingToast })
     } catch (error) {
-      console.error('Erro ao excluir:', error)
+      logger.error('Erro ao excluir:', error)
       toast.error('Não foi possível excluir a transação.', { id: loadingToast })
     } finally {
       setIsDeleteModalOpen(false)
@@ -310,7 +311,7 @@ export function DayDetailsView({
         await updateDoc(docRef, editedData)
         toast.success('Transação atualizada com sucesso!', { id: loadingToast })
       } catch (error) {
-        console.error('Erro ao atualizar transação:', error)
+        logger.error('Erro ao atualizar transação:', error)
         toast.error('Erro ao atualizar transação', { id: loadingToast })
       } finally {
         setIsEditModalOpen(false)
@@ -348,7 +349,7 @@ export function DayDetailsView({
       })
     } catch (error) {
       toast.error('Erro ao excluir transações', { id: loadingToast })
-      console.error('Erro ao excluir transações:', error)
+      logger.error('Erro ao excluir transações:', error)
     } finally {
       setIsRecurrenceEditModalOpen(false)
       setTransactionToDelete(null)
@@ -403,8 +404,8 @@ export function DayDetailsView({
 
       toast.success(message, { id: loadingToast })
     } catch (error) {
-      console.error('Erro ao atualizar série:', error)
-      console.error('Stack completo:', error.stack)
+      logger.error('Erro ao atualizar série:', error)
+      logger.error('Stack completo:', error.stack)
       toast.error('Erro ao atualizar transações', { id: loadingToast })
     } finally {
       setIsRecurrenceOptionsModalOpen(false)

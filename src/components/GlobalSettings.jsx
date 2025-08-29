@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
+import { logger } from '../utils/logger'
 import toast from 'react-hot-toast'
 import { Save } from 'lucide-react'
 
@@ -47,7 +48,7 @@ export function GlobalSettings() {
       )
       toast.success('Configurações guardadas!', { id: loadingToast })
     } catch (err) {
-      console.error('Erro ao guardar configurações:', err)
+      logger.error('Erro ao guardar configurações:', err)
       toast.error('Não foi possível guardar as configurações.', {
         id: loadingToast,
       })

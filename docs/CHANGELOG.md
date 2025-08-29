@@ -1,5 +1,67 @@
 # Changelog
 
+## [2025-08-29] - Fase 2: Correções Funcionais Implementadas
+
+### 🚀 Sprint 3: Validações e Tratamento de Dados
+- **Validação de Recorrência Inconsistente**: Implementada validação robusta para evitar recorrências com datas inconsistentes (startDate > endDate)
+- **Tratamento de Timestamps Inconsistente**: Adicionado try-catch robusto para conversão de Timestamps do Firestore com logging padronizado
+- **Validação de Dados de Entrada**: Implementadas validações defensivas para parâmetros de entrada em todas as funções críticas
+
+### 🚀 Sprint 4: Console.log e Duplicações
+- **Console.log Padronizado**: Substituído todos os console.log/error/warn por logger padronizado em 10 arquivos
+- **Eliminação de Duplicação**: Removida função duplicada `formatFiscalMonth` e centralizada em `helpers.js`
+- **Imports Padronizados**: Analisado e confirmado que todos os imports relativos estão consistentes e bem organizados
+
+### 🔧 Melhorias Técnicas Implementadas
+- **Sistema de Validação de Recorrência**: Previne criação de recorrências com datas inconsistentes
+- **Tratamento Robusto de Timestamps**: Aplicação não quebra com dados corrompidos do Firestore
+- **Sistema de Logging Padronizado**: Logs centralizados e configuráveis para produção
+- **Eliminação de Duplicação de Código**: Manutenibilidade melhorada, código mais limpo
+- **Validações Defensivas**: Prevenção de erros em runtime, melhor debugging
+
+### 📊 Impacto das Melhorias
+- **Robustez**: Aplicação mais resistente a dados inválidos
+- **Observabilidade**: Logs padronizados para observabilidade
+- **Manutenibilidade**: Código mais fácil de manter e debugar
+- **Qualidade**: Redução de bugs relacionados a validações
+
+### 📁 Arquivos Modificados
+**Sprint 3**: 
+- `src/utils/recurrence.js` - Validação de recorrência e validações defensivas
+- `src/hooks/useFirestoreQuery.js` - Tratamento robusto de Timestamps
+- `src/hooks/useFirestoreDocument.js` - Tratamento robusto de Timestamps
+
+**Sprint 4**: 
+- `src/firebase/config.js` - Substituição de console.log por logger
+- `src/views/ExpenseForm.jsx` - Substituição de console.error por logger
+- `src/views/RevenueForm.jsx` - Substituição de console.error por logger
+- `src/views/DayDetailsView.jsx` - Substituição de console.error por logger
+- `src/components/CategoryManagement.jsx` - Substituição de console.error por logger
+- `src/components/CreditCardManagement.jsx` - Substituição de console.error por logger
+- `src/components/GlobalSettings.jsx` - Substituição de console.error por logger
+- `src/components/InstallmentConfig.jsx` - Substituição de console.error por logger
+- `src/utils/helpers.js` - Substituição de console.warn por logger
+- `src/utils/recurrence.js` - Substituição de console.error/warn por logger + eliminação de duplicação
+
+### 🧪 Testes e Validação
+- **Validação de Recorrência**: Testado com cenários válidos e inválidos
+- **Build de Produção**: Bem-sucedido sem erros de compilação
+- **Sistema de Logging**: Funcionando em todos os arquivos
+- **Funcionalidades**: Todas as funcionalidades existentes mantidas
+
+### ✅ Status
+- **Implementação**: 100% Concluída (6/6 tarefas)
+- **Tempo**: ~16-20 horas
+- **Build**: Funcionando perfeitamente
+- **Próximo**: Fase 2.1 (Correções de UX) ou Fase 3 do plano de ação
+
+### ⚠️ Problemas Identificados Durante Testes
+- **Validação de Recorrência**: Erro não é exibido corretamente na UI (apenas no console)
+- **Estado do Formulário**: Botão "Salvar Despesa" fica indisponível após erro
+- **Mensagens de Erro**: Toast genérico em vez de mensagem específica de validação
+
+---
+
 ## [2025-08-28] - Correção de Bug: Data de Vencimento de Fatura
 
 ### 🐛 Bug Corrigido

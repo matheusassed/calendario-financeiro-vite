@@ -26,10 +26,24 @@ export const useFirestoreQuery = (query) => {
 
           // **CORREÇÃO**: Itera sobre todas as chaves do documento
           // e converte qualquer campo que seja um Timestamp do Firebase.
-          for (const key in docData) {
-            if (docData[key] && typeof docData[key].toDate === 'function') {
-              docData[key] = docData[key].toDate()
+          // **MELHORIA**: Adicionado try-catch para tratamento robusto de erros
+          try {
+            for (const key in docData) {
+              if (docData[key] && typeof docData[key].toDate === 'function') {
+                try {
+                  docData[key] = docData[key].toDate()
+                } catch (timestampError) {
+                  logger.warn(`Erro ao converter Timestamp para campo '${key}':`, timestampError)
+                  // Mantém o valor original se a conversão falhar
+                  docData[key] = docData[key]
+                }
+              }
             }
+          } catch (conversionError) {
+            logger.error('Erro crítico na conversão de Timestamps:', conversionError)
+            logger.error('Documento problemático:', { id: doc.id, data: docData })
+            // Retorna documento com dados originais se a conversão falhar completamente
+            return { id: doc.id, ...docData, _conversionError: true }
           }
 
           return { id: doc.id, ...docData }

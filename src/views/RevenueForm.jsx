@@ -8,6 +8,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { formatFiscalMonth, calculateCloseDate } from '../utils/helpers'
+import { logger } from '../utils/logger'
 import toast from 'react-hot-toast'
 import { RecurrenceConfig } from '../components/RecurrenceConfig'
 import {
@@ -166,7 +167,7 @@ export function RevenueForm({
 
       if (onSave) onSave()
     } catch (err) {
-      console.error('Erro ao adicionar receita:', err)
+      logger.error('Erro ao adicionar receita:', err)
       toast.error('Ocorreu um erro ao salvar a receita.', { id: loadingToast })
       setError('Ocorreu um erro ao salvar a receita.')
     } finally {

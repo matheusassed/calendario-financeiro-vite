@@ -4,6 +4,7 @@ import {
   getInstallmentDates,
   validateInstallmentConfig,
 } from '../utils/installments'
+import { logger } from '../utils/logger'
 
 /**
  * Componente para configurar parcelamento de compras no cartão de crédito
@@ -51,7 +52,7 @@ export function InstallmentConfig({
           })),
         )
       } catch (error) {
-        console.error('Erro ao gerar preview de parcelas:', error)
+        logger.error('Erro ao gerar preview de parcelas:', error)
       }
     } else {
       setInstallmentPreview([])

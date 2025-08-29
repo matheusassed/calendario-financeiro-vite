@@ -26,6 +26,8 @@ export const firebaseDb = getFirestore(firebaseApp)
 
 // Verificar se já existe uma instância (para debug)
 if (import.meta.env.DEV) {
-  console.log('Firebase inicializado:', firebaseApp.name)
-  console.log('Instância única:', firebaseApp)
+  import('../utils/logger.js').then(({ logger }) => {
+    logger.info('Firebase inicializado:', firebaseApp.name)
+    logger.info('Instância única:', firebaseApp)
+  })
 }
