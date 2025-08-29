@@ -151,4 +151,37 @@ O projeto está agora em um estado muito mais robusto e profissional, com melhor
 
 ---
 
-**Próximo Passo Recomendado**: Implementar a **Fase 3** do plano de ação para continuar as melhorias de qualidade e performance do projeto.
+## ⚠️ **PROBLEMAS IDENTIFICADOS E MELHORIAS NECESSÁRIAS**
+
+### **🔴 Problemas de UX Identificados Durante Testes:**
+
+#### **1. Validação de Recorrência - Mensagens de Erro**
+- **Problema**: Erro de validação aparece apenas no console, não na UI
+- **Impacto**: Usuário não vê feedback claro sobre o que está errado
+- **Solução Necessária**: Exibir mensagem específica "Data final deve ser posterior à data inicial" no toast/UI
+
+#### **2. Estado do Formulário Após Erro**
+- **Problema**: Botão "Salvar Despesa" fica indisponível após erro de validação
+- **Impacto**: Usuário não consegue corrigir e tentar novamente
+- **Solução Necessária**: Resetar estado do formulário após erro de validação
+
+#### **3. Toast Genérico vs Mensagem Específica**
+- **Problema**: Toast mostra "Ocorreu um erro ao salvar a despesa" em vez de mensagem específica
+- **Impacto**: Usuário não entende o que precisa corrigir
+- **Solução Necessária**: Capturar erro de validação e exibir mensagem específica
+
+### **🔧 Melhorias Necessárias para Fase 2.1:**
+
+#### **Prioridade ALTA:**
+1. **Capturar erro de validação** antes de chegar ao try-catch genérico
+2. **Exibir mensagem específica** na UI para erros de validação
+3. **Resetar estado do formulário** após erro de validação
+
+#### **Prioridade MÉDIA:**
+1. **Melhorar feedback visual** para erros de validação
+2. **Implementar validação em tempo real** para datas de recorrência
+3. **Adicionar validação preventiva** antes de tentar salvar
+
+---
+
+**Próximo Passo Recomendado**: Implementar **Fase 2.1 - Correções de UX** para resolver os problemas identificados, ou prosseguir para a **Fase 3** do plano de ação para continuar as melhorias de qualidade e performance do projeto.

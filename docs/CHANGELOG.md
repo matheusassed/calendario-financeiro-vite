@@ -53,7 +53,12 @@
 - **Implementação**: 100% Concluída (6/6 tarefas)
 - **Tempo**: ~16-20 horas
 - **Build**: Funcionando perfeitamente
-- **Próximo**: Fase 3 do plano de ação
+- **Próximo**: Fase 2.1 (Correções de UX) ou Fase 3 do plano de ação
+
+### ⚠️ Problemas Identificados Durante Testes
+- **Validação de Recorrência**: Erro não é exibido corretamente na UI (apenas no console)
+- **Estado do Formulário**: Botão "Salvar Despesa" fica indisponível após erro
+- **Mensagens de Erro**: Toast genérico em vez de mensagem específica de validação
 
 ---
 
