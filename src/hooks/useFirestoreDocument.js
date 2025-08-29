@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { onSnapshot } from 'firebase/firestore'
+import { logger } from '../utils/logger'
 
 /**
  * Um hook customizado para buscar um único documento do Firestore em tempo real.
@@ -21,14 +22,35 @@ export const useFirestoreDocument = (docRef) => {
       docRef,
       (docSnap) => {
         if (docSnap.exists()) {
-          setData(docSnap.data())
+          const docData = docSnap.data()
+          
+          // **MELHORIA**: Conversão de Timestamps com tratamento robusto de erros
+          try {
+            for (const key in docData) {
+              if (docData[key] && typeof docData[key].toDate === 'function') {
+                try {
+                  docData[key] = docData[key].toDate()
+                } catch (timestampError) {
+                  logger.warn(`Erro ao converter Timestamp para campo '${key}':`, timestampError)
+                  // Mantém o valor original se a conversão falhar
+                  docData[key] = docData[key]
+                }
+              }
+            }
+            setData(docData)
+          } catch (conversionError) {
+            logger.error('Erro crítico na conversão de Timestamps:', conversionError)
+            logger.error('Documento problemático:', { id: docSnap.id, data: docData })
+            // Retorna dados originais se a conversão falhar completamente
+            setData({ ...docData, _conversionError: true })
+          }
         } else {
           setData(null) // Documento não existe
         }
         setLoading(false)
       },
       (error) => {
-        console.error('Erro no useFirestoreDocument:', error)
+        logger.error('Erro no useFirestoreDocument:', error)
         setLoading(false)
       },
     )

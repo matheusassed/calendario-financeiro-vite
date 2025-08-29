@@ -1,3 +1,5 @@
+import { logger } from './logger'
+
 /**
  * Retorna o número de dias em um determinado mês e ano.
  * @param {number} year - O ano.
@@ -25,12 +27,12 @@ export const getFirstDayOfMonth = (year, month) => {
  */
 export const formatFiscalMonth = (date) => {
   if (!date) {
-    console.warn('Data inválida para formatFiscalMonth:', date)
+    logger.warn('Data inválida para formatFiscalMonth:', date)
     return new Date().toISOString().substring(0, 7) // fallback para ano-mês atual
   }
 
   if (typeof date.getFullYear !== 'function') {
-    console.warn('Objeto date inválido:', date)
+    logger.warn('Objeto date inválido:', date)
     return new Date().toISOString().substring(0, 7)
   }
 

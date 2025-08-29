@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { collection, addDoc, doc, deleteDoc } from 'firebase/firestore'
+import { logger } from '../utils/logger'
 import toast from 'react-hot-toast'
 import { Plus, Trash2 } from 'lucide-react'
 import { ConfirmModal } from './ConfirmModal'
@@ -34,7 +35,7 @@ export function CategoryManagement({ categories }) {
       toast.success('Categoria adicionada!', { id: loadingToast })
       setNewCategoryName('')
     } catch (err) {
-      console.error('Erro ao adicionar categoria:', err)
+      logger.error('Erro ao adicionar categoria:', err)
       toast.error('Não foi possível adicionar a categoria.', {
         id: loadingToast,
       })
@@ -64,7 +65,7 @@ export function CategoryManagement({ categories }) {
       )
       toast.success('Categoria excluída!', { id: loadingToast })
     } catch (err) {
-      console.error('Erro ao excluir categoria:', err)
+      logger.error('Erro ao excluir categoria:', err)
       toast.error('Não foi possível excluir a categoria.', { id: loadingToast })
     } finally {
       setIsModalOpen(false)

@@ -2,6 +2,8 @@
 /**
  * Utilitários para gerenciamento de transações recorrentes
  */
+import { logger } from './logger'
+import { formatFiscalMonth } from './helpers'
 
 /**
  * Tipos de recorrência disponíveis
@@ -112,6 +114,16 @@ export const generateRecurrenceDates = (startDate, rule, maxInstances = 12) => {
     throw new Error(`Regra inválida: ${validation.errors.join(', ')}`)
   }
 
+  // CORREÇÃO: Adicionar validação de startDate < endDate
+  if (rule.endDate) {
+    const startDateObj = new Date(startDate)
+    const endDateObj = new Date(rule.endDate)
+    
+    if (endDateObj <= startDateObj) {
+      throw new Error('Data final deve ser posterior à data inicial')
+    }
+  }
+
   const dates = [new Date(startDate)]
   let currentDate = new Date(startDate)
   let instanceCount = 1
@@ -182,22 +194,22 @@ export const getAffectedInstances = (
 ) => {
   // Validações melhoradas
   if (!transaction) {
-    console.error('Transação é obrigatória')
+    logger.error('Transação é obrigatória')
     return []
   }
 
   if (!transaction.id) {
-    console.error('Transação deve ter um ID válido:', transaction)
+    logger.error('Transação deve ter um ID válido:', transaction)
     return []
   }
 
   if (!editOption) {
-    console.error('editOption é obrigatório')
+    logger.error('editOption é obrigatório')
     return [transaction.id]
   }
 
   if (!allTransactions || !Array.isArray(allTransactions)) {
-    console.error('allTransactions deve ser um array')
+    logger.error('allTransactions deve ser um array')
     return [transaction.id]
   }
 
@@ -208,7 +220,7 @@ export const getAffectedInstances = (
   const series = getRecurrenceSeries(transaction.recurrenceId, allTransactions)
 
   if (series.length === 0) {
-    console.warn('Série vazia, retornando apenas a transação atual')
+    logger.warn('Série vazia, retornando apenas a transação atual')
     return [transaction.id]
   }
 
@@ -232,7 +244,7 @@ export const getAffectedInstances = (
       break
 
     default:
-      console.warn('editOption não reconhecida:', editOption)
+      logger.warn('editOption não reconhecida:', editOption)
       result = [transaction.id]
   }
 
@@ -271,25 +283,7 @@ export const createRecurrenceInstance = (
   }
 }
 
-/**
- * Formata um objeto Date para uma string no formato "YYYY-MM"
- * (Duplicado de helpers.js para evitar dependência circular)
- */
-const formatFiscalMonth = (date) => {
-  if (!date) {
-    console.warn('Data inválida para formatFiscalMonth:', date)
-    return new Date().toISOString().substring(0, 7)
-  }
 
-  if (typeof date.getFullYear !== 'function') {
-    console.warn('Objeto date inválido:', date)
-    return new Date().toISOString().substring(0, 7)
-  }
-
-  const year = date.getFullYear()
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  return `${year}-${month}`
-}
 
 /**
  * Obtém a descrição legível de uma regra de recorrência
@@ -345,7 +339,7 @@ export const updateRecurringSeries = async (
 ) => {
   // Validações de entrada
   if (!editedTransaction || !editedTransaction.id) {
-    console.error('editedTransaction inválida:', editedTransaction)
+    logger.error('editedTransaction inválida:', editedTransaction)
     throw new Error('editedTransaction deve ter um ID válido')
   }
   if (!editOption) {
@@ -370,7 +364,7 @@ export const updateRecurringSeries = async (
   )
 
   if (affectedIds.length === 0) {
-    console.warn('Nenhuma transação afetada encontrada')
+    logger.warn('Nenhuma transação afetada encontrada')
     return 0
   }
 
@@ -405,7 +399,7 @@ export const updateRecurringSeries = async (
 
   for (const transactionId of affectedIds) {
     if (!transactionId || typeof transactionId !== 'string') {
-      console.error(`ID de transação inválido: ${transactionId}`)
+      logger.error(`ID de transação inválido: ${transactionId}`)
       continue
     }
 
@@ -416,7 +410,7 @@ export const updateRecurringSeries = async (
       )
 
       if (!targetTransaction) {
-        console.warn(`Transação alvo não encontrada para ID: ${transactionId}`)
+        logger.warn(`Transação alvo não encontrada para ID: ${transactionId}`)
         continue
       }
 
@@ -445,7 +439,7 @@ export const updateRecurringSeries = async (
       batch.update(docRef, finalData)
       successCount++
     } catch (error) {
-      console.error(`Erro ao processar transação ${transactionId}:`, error)
+      logger.error(`Erro ao processar transação ${transactionId}:`, error)
     }
   }
 

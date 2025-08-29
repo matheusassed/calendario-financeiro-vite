@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { collection, addDoc, doc, deleteDoc } from 'firebase/firestore'
+import { logger } from '../utils/logger'
 import toast from 'react-hot-toast'
 import { Plus, Trash2, CreditCard } from 'lucide-react'
 import { ConfirmModal } from './ConfirmModal'
@@ -48,7 +49,7 @@ export function CreditCardManagement({ creditCards }) {
       toast.success('Cartão adicionado!', { id: loadingToast })
       setFormData({ name: '', invoiceCloseDay: '', invoiceDueDay: '' }) // Limpa o formulário
     } catch (err) {
-      console.error('Erro ao adicionar cartão:', err)
+      logger.error('Erro ao adicionar cartão:', err)
       toast.error('Não foi possível adicionar o cartão.', { id: loadingToast })
     }
     setLoading(false)
@@ -73,7 +74,7 @@ export function CreditCardManagement({ creditCards }) {
       )
       toast.success('Cartão excluído!', { id: loadingToast })
     } catch (err) {
-      console.error('Erro ao excluir cartão:', err)
+      logger.error('Erro ao excluir cartão:', err)
       toast.error('Não foi possível excluir o cartão.', { id: loadingToast })
     } finally {
       setIsModalOpen(false)

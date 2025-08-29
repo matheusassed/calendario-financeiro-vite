@@ -13,6 +13,7 @@ import {
   increment,
 } from 'firebase/firestore'
 import { formatFiscalMonth, calculateCloseDate, calculateInvoiceMonth } from '../utils/helpers'
+import { logger } from '../utils/logger'
 import toast from 'react-hot-toast'
 import { RecurrenceConfig } from '../components/RecurrenceConfig'
 import {
@@ -432,7 +433,7 @@ export function ExpenseForm({
 
       if (onSave) onSave()
     } catch (err) {
-      console.error('Erro ao salvar despesa:', err)
+      logger.error('Erro ao salvar despesa:', err)
       toast.error('Ocorreu um erro ao salvar a despesa.', { id: loadingToast })
       setError('Ocorreu um erro ao salvar a despesa.')
     } finally {
